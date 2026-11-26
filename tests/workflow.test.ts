@@ -77,12 +77,47 @@ test.after(async () => {
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
-test('1. Clean initial state: only admin account, 0 mock units, 60/40 scorecard ready', async () => {
+test('1. Clean initial state: only admin account, 55 official units, 0 sample scorecards -> Admin creates & publishes scorecard', async () => {
   const adminCookie = await login('admin', 'admin123');
   const usersRes = await request('GET', '/api/admin/users', { cookie: adminCookie });
   assert.equal(usersRes.status, 200);
   assert.equal(usersRes.json().users.length, 1);
   assert.equal(usersRes.json().users[0].username, 'admin');
+
+  const initialVer = (await request('GET', '/api/scorecards', { cookie: adminCookie })).json();
+  assert.equal(initialVer.versions.length, 0);
+
+  // Admin creates a new scorecard version with 60 fixed pts and publishes it
+  const createdVer = await request('POST', '/api/scorecards', {
+    cookie: adminCookie,
+    body: { title: 'Bảng điểm 2026 chính thức', year: 2026, period: 'Cuối năm 2026' },
+  });
+  assert.equal(createdVer.status, 201);
+  const versionId = createdVer.json().version.id;
+
+  const grp = await request('POST', `/api/scorecards/${versionId}/groups`, {
+    cookie: adminCookie,
+    body: { section_type: 'fixed', code: 'I', title: 'Nhóm cố định', max_score: 60 },
+  });
+  assert.equal(grp.status, 201);
+  const groupId = grp.json().group.id;
+
+  const it1 = await request('POST', `/api/scorecards/${versionId}/items`, {
+    cookie: adminCookie,
+    body: { group_id: groupId, code: 'TC-1.1', title: 'Tiêu chí 1', max_score: 30 },
+  });
+  assert.equal(it1.status, 201);
+  const it2 = await request('POST', `/api/scorecards/${versionId}/items`, {
+    cookie: adminCookie,
+    body: { group_id: groupId, code: 'TC-1.2', title: 'Tiêu chí 2', max_score: 30 },
+  });
+  assert.equal(it2.status, 201);
+
+  const pub = await request('PATCH', `/api/scorecards/${versionId}/status`, {
+    cookie: adminCookie,
+    body: { status: 'published' },
+  });
+  assert.equal(pub.status, 200);
 
   const dashRes = await request('GET', '/api/dashboard', { cookie: adminCookie });
   assert.equal(dashRes.status, 200);
@@ -142,7 +177,7 @@ test('3. Two-round workflow with newly created Cơ sở Đoàn & Cán bộ Đoà
   const evalId = unitDash.units[0].id;
 
   const detail = (await request('GET', `/api/evaluations/${evalId}`, { cookie: unitCookie })).json();
-  assert.equal(detail.items.length, 12);
+  assert.equal(detail.items.length, 2);
 
   for (const item of detail.items) {
     const res = await request('PUT', `/api/evaluations/${evalId}/self-score`, {

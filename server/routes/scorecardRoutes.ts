@@ -163,6 +163,45 @@ scorecardRouter.post('/', requireAuth, requireRoles('admin'), async (req, res) =
   }
 });
 
+// Delete scorecard version (Admin only)
+scorecardRouter.delete('/:id', requireAuth, requireRoles('admin'), async (req, res) => {
+  try {
+    const versionId = Number(req.params.id);
+    const db = await getDb();
+    const existing = await db.query<{ code: string; title: string }>(
+      'SELECT code, title FROM scorecard_versions WHERE id = $1',
+      [versionId],
+    );
+    if (existing.rows.length === 0) {
+      res.status(404).json({ error: 'Không tìm thấy phiên bản bảng điểm.' });
+      return;
+    }
+
+    const activeCount = await getActiveEvalCount(versionId);
+    if (activeCount > 0) {
+      res.status(409).json({
+        error: `Không thể xóa phiên bản đang có ${activeCount} hồ sơ đã/đang chấm điểm. Hãy chuyển sang "Ngừng áp dụng" thay vì xóa.`,
+      });
+      return;
+    }
+
+    await db.query('DELETE FROM scorecard_versions WHERE id = $1', [versionId]);
+
+    await writeAuditLog({
+      user: req.user!,
+      action: 'DELETE_SCORECARD',
+      entityType: 'scorecard_version',
+      entityId: versionId,
+      summary: `Xóa phiên bản bảng điểm ${existing.rows[0].code}: ${existing.rows[0].title}`,
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Delete scorecard error:', err);
+    res.status(500).json({ error: 'Không thể xóa phiên bản bảng điểm.' });
+  }
+});
+
 // Clone scorecard from a previous year / version (Admin only)
 scorecardRouter.post('/:id/clone', requireAuth, requireRoles('admin'), async (req, res) => {
   try {

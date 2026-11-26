@@ -89,8 +89,27 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
   useEffect(() => {
     if (selectedVersionId) {
       loadDetail(selectedVersionId);
+    } else {
+      setDetail(null);
     }
   }, [selectedVersionId]);
+
+  async function handleDeleteVersion(v: ScorecardVersion) {
+    if (!window.confirm(`Xóa vĩnh viễn phiên bản bảng điểm "${v.title}" (${v.code})?`)) return;
+    setError('');
+    try {
+      await apiFetch(`/api/scorecards/${v.id}`, { method: 'DELETE' });
+      onVersionsChanged();
+      if (selectedVersionId === v.id) {
+        const remaining = versions.filter((item) => item.id !== v.id);
+        if (remaining[0]) onSelectVersion(remaining[0].id);
+        else setDetail(null);
+      }
+      showToastMsg(`Đã xóa phiên bản bảng điểm ${v.code}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể xóa phiên bản bảng điểm.');
+    }
+  }
 
   function showToastMsg(msg: string) {
     setToast(msg);
@@ -277,7 +296,71 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
   if (loading && !detail) {
     return <div className="card-surface p-10 text-center text-sm text-[var(--text-secondary)]">Đang tải bộ tiêu chí...</div>;
   }
-  if (!detail) return null;
+  if (!detail) {
+    return (
+      <div className="space-y-4">
+        <div className="card-surface p-10 text-center space-y-4">
+          <AlertCircle className="w-10 h-10 mx-auto text-[#005baa]" />
+          <div className="text-lg font-bold">Chưa có phiên bản bảng điểm nào</div>
+          <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto">
+            Hãy tạo phiên bản bảng điểm mới để thiết lập bộ 60 điểm cố định và 40 điểm bổ sung cho các Cơ sở Đoàn xã Tân Nhựt.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowNewVersion(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#005baa] hover:bg-[#004a8c] text-white text-sm font-semibold cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> Tạo phiên bản bảng điểm mới
+          </button>
+        </div>
+
+        {showNewVersion && (
+          <div className="fixed inset-0 z-50 bg-slate-950/50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+            <form onSubmit={handleCreateVersion} className="card-surface max-w-md w-full p-6 space-y-4">
+              <h3 className="text-lg font-bold">Tạo phiên bản bảng điểm mới</h3>
+              <div className="space-y-3 text-sm">
+                <div>
+                  <label className="block font-medium mb-1">Tên bảng điểm *</label>
+                  <input
+                    required
+                    value={newVerForm.title}
+                    onChange={(e) => setNewVerForm({ ...newVerForm, title: e.target.value })}
+                    placeholder="Ví dụ: Bảng điểm đánh giá Cơ sở Đoàn năm 2026"
+                    className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)]"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-medium mb-1">Năm *</label>
+                    <input
+                      type="number"
+                      required
+                      value={newVerForm.year}
+                      onChange={(e) => setNewVerForm({ ...newVerForm, year: Number(e.target.value) })}
+                      className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-medium mb-1">Đợt đánh giá *</label>
+                    <input
+                      required
+                      value={newVerForm.period}
+                      onChange={(e) => setNewVerForm({ ...newVerForm, period: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)]"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowNewVersion(false)} className="px-4 py-2 rounded-lg border border-[var(--border-color)] text-sm cursor-pointer">Hủy</button>
+                <button type="submit" className="px-4 py-2 rounded-lg bg-[#005baa] text-white text-sm font-semibold cursor-pointer">Tạo mới</button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const { version, points, activeEvaluations, groups, items } = detail;
   const filteredGroups = groups.filter((g) => g.section_type === sectionTab);
@@ -635,13 +718,23 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
                     {v.status === 'published' ? 'Đang áp dụng' : v.status === 'draft' ? 'Nháp' : 'Lưu trữ'}
                   </td>
                   <td className="py-2.5 px-3 text-right">
-                    <button
-                      type="button"
-                      onClick={() => onSelectVersion(v.id)}
-                      className="text-xs font-semibold text-[#005baa] dark:text-sky-400 hover:underline cursor-pointer"
-                    >
-                      {v.id === version.id ? 'Đang xem' : 'Quản lý'}
-                    </button>
+                    <div className="inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onSelectVersion(v.id)}
+                        className="text-xs font-semibold text-[#005baa] dark:text-sky-400 hover:underline cursor-pointer"
+                      >
+                        {v.id === version.id ? 'Đang xem' : 'Quản lý'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteVersion(v)}
+                        className="p-1 rounded hover:bg-red-100 dark:hover:bg-red-950/50 text-red-600 cursor-pointer"
+                        title="Xóa phiên bản bảng điểm"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
