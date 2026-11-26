@@ -127,7 +127,7 @@ export function App() {
             setSelectedEvalId(evalId);
             setActiveTab('scoring');
           }}
-          onGoToCriteria={user.role === 'admin' ? () => setActiveTab('criteria') : undefined}
+          onGoToCriteria={user.role === 'admin' || user.role === 'reviewer' ? () => setActiveTab('criteria') : undefined}
         />
       )}
 
@@ -141,7 +141,7 @@ export function App() {
         />
       )}
 
-      {activeTab === 'criteria' && user.role === 'admin' && (
+      {activeTab === 'criteria' && (user.role === 'admin' || user.role === 'reviewer') && (
         <CriteriaManagerPage
           versions={versions}
           selectedVersionId={selectedVersionId}

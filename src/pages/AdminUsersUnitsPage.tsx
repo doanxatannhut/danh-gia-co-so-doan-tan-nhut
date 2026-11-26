@@ -621,7 +621,7 @@ export const AdminUsersUnitsPage: React.FC<AdminUsersUnitsPageProps> = ({
                   className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)]"
                 >
                   <option value="admin">Quản trị viên Đoàn xã (Toàn quyền hệ thống)</option>
-                  <option value="reviewer">Cán bộ Đoàn xã (Đánh giá, chấm điểm, trả & chốt hồ sơ)</option>
+                  <option value="reviewer">Cán bộ Đoàn xã (Quản lý tiêu chí, đánh giá, chấm điểm, trả & chốt hồ sơ)</option>
                   <option value="unit">Cơ sở Đoàn (Tự đánh giá & nộp minh chứng của đơn vị)</option>
                 </select>
               </div>

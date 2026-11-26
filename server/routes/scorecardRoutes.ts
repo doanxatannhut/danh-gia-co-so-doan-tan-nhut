@@ -124,7 +124,7 @@ scorecardRouter.get('/:id', requireAuth, async (req, res) => {
 });
 
 // Create new scorecard version (Admin only)
-scorecardRouter.post('/', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.post('/', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const title = String(req.body?.title ?? '').trim();
     const year = Number(req.body?.year);
@@ -164,7 +164,7 @@ scorecardRouter.post('/', requireAuth, requireRoles('admin'), async (req, res) =
 });
 
 // Delete scorecard version (Admin only)
-scorecardRouter.delete('/:id', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.delete('/:id', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const versionId = Number(req.params.id);
     const db = await getDb();
@@ -203,7 +203,7 @@ scorecardRouter.delete('/:id', requireAuth, requireRoles('admin'), async (req, r
 });
 
 // Clone scorecard from a previous year / version (Admin only)
-scorecardRouter.post('/:id/clone', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.post('/:id/clone', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const sourceId = Number(req.params.id);
     const db = await getDb();
@@ -317,7 +317,7 @@ scorecardRouter.post('/:id/clone', requireAuth, requireRoles('admin'), async (re
 });
 
 // Publish or archive scorecard version (Admin only)
-scorecardRouter.patch('/:id/status', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.patch('/:id/status', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const versionId = Number(req.params.id);
     const status = String(req.body?.status ?? '');
@@ -381,7 +381,7 @@ scorecardRouter.patch('/:id/status', requireAuth, requireRoles('admin'), async (
 });
 
 // Publish Supplementary 40-point criteria (Admin only)
-scorecardRouter.post('/:id/publish-supplementary', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.post('/:id/publish-supplementary', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const versionId = Number(req.params.id);
     const db = await getDb();
@@ -431,7 +431,7 @@ scorecardRouter.post('/:id/publish-supplementary', requireAuth, requireRoles('ad
 });
 
 // Create criteria group (Admin only)
-scorecardRouter.post('/:id/groups', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.post('/:id/groups', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const versionId = Number(req.params.id);
     const sectionType = req.body?.section_type === 'supplementary' ? 'supplementary' : 'fixed';
@@ -484,7 +484,7 @@ scorecardRouter.post('/:id/groups', requireAuth, requireRoles('admin'), async (r
 });
 
 // Delete criteria group (Admin only)
-scorecardRouter.delete('/:id/groups/:groupId', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.delete('/:id/groups/:groupId', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const versionId = Number(req.params.id);
     const groupId = Number(req.params.groupId);
@@ -521,7 +521,7 @@ scorecardRouter.delete('/:id/groups/:groupId', requireAuth, requireRoles('admin'
 });
 
 // Create criterion item (Admin only, strict 60/40/100 validation)
-scorecardRouter.post('/:id/items', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.post('/:id/items', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const versionId = Number(req.params.id);
     const groupId = Number(req.body?.group_id);
@@ -609,7 +609,7 @@ scorecardRouter.post('/:id/items', requireAuth, requireRoles('admin'), async (re
 });
 
 // Update criterion item (Admin only)
-scorecardRouter.patch('/:id/items/:itemId', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.patch('/:id/items/:itemId', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const versionId = Number(req.params.id);
     const itemId = Number(req.params.itemId);
@@ -689,7 +689,7 @@ scorecardRouter.patch('/:id/items/:itemId', requireAuth, requireRoles('admin'), 
 });
 
 // Delete criterion item (Admin only)
-scorecardRouter.delete('/:id/items/:itemId', requireAuth, requireRoles('admin'), async (req, res) => {
+scorecardRouter.delete('/:id/items/:itemId', requireAuth, requireRoles('admin', 'reviewer'), async (req, res) => {
   try {
     const versionId = Number(req.params.id);
     const itemId = Number(req.params.itemId);

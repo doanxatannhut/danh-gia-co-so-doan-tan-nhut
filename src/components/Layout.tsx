@@ -72,7 +72,7 @@ export const Layout: React.FC<LayoutProps> = ({
       id: 'criteria',
       label: 'Quản lý tiêu chí (60/40)',
       icon: <SlidersHorizontal className="w-4 h-4" />,
-      visible: user.role === 'admin',
+      visible: user.role === 'admin' || user.role === 'reviewer',
     },
     {
       id: 'users',

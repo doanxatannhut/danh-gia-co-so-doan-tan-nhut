@@ -78,7 +78,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         <div className="text-sm text-[var(--text-secondary)]">
           Chưa có phiên bản bảng điểm nào được thiết lập.
         </div>
-        {user.role === 'admin' && onGoToCriteria && (
+        {(user.role === 'admin' || user.role === 'reviewer') && onGoToCriteria && (
           <button
             type="button"
             onClick={onGoToCriteria}
@@ -150,7 +150,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <span>40 điểm bổ sung chưa công bố — không tính 0 điểm</span>
               </div>
             )}
-            {user.role === 'admin' && onGoToCriteria && (
+            {(user.role === 'admin' || user.role === 'reviewer') && onGoToCriteria && (
               <button
                 type="button"
                 onClick={onGoToCriteria}
