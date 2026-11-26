@@ -74,8 +74,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   if (!data || !data.version || !data.stats || !data.points) {
     return (
-      <div className="card-surface p-10 text-center text-sm text-[var(--text-secondary)]">
-        Chưa có phiên bản bảng điểm nào được thiết lập.
+      <div className="card-surface p-10 text-center space-y-3">
+        <div className="text-sm text-[var(--text-secondary)]">
+          Chưa có phiên bản bảng điểm nào được thiết lập.
+        </div>
+        {user.role === 'admin' && onGoToCriteria && (
+          <button
+            type="button"
+            onClick={onGoToCriteria}
+            className="px-4 py-2 rounded-lg bg-[#005baa] hover:bg-[#004a8c] text-white text-xs sm:text-sm font-semibold cursor-pointer"
+          >
+            Đi tới Quản lý tiêu chí (60/40) để tạo bảng điểm
+          </button>
+        )}
       </div>
     );
   }

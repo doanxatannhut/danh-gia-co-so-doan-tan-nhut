@@ -42,14 +42,15 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
   onVersionsChanged,
 }) => {
   const [detail, setDetail] = useState<VersionDetailResponse | null>(null);
-  const [sectionTab, setSectionTab] = useState<'fixed' | 'supplementary'>('supplementary');
+  const [sectionTab, setSectionTab] = useState<'fixed' | 'supplementary'>('fixed');
   const [loading, setLoading] = useState(false);
+  const [creatingVersion, setCreatingVersion] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
 
   // Modals
   const [showNewVersion, setShowNewVersion] = useState(false);
-  const [newVerForm, setNewVerForm] = useState({ title: '', year: 2027, period: 'Đợt tổng kết năm 2027' });
+  const [newVerForm, setNewVerForm] = useState({ title: '', year: new Date().getFullYear(), period: `Đợt tổng kết năm ${new Date().getFullYear()}` });
 
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [cloneForm, setCloneForm] = useState({
@@ -118,18 +119,23 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
 
   async function handleCreateVersion(e: React.FormEvent) {
     e.preventDefault();
+    if (creatingVersion) return;
     setError('');
+    setCreatingVersion(true);
     try {
       const res = await apiFetch<{ version: ScorecardVersion }>('/api/scorecards', {
         method: 'POST',
         body: JSON.stringify(newVerForm),
       });
       setShowNewVersion(false);
-      onVersionsChanged();
+      setNewVerForm({ title: '', year: new Date().getFullYear(), period: `Đợt tổng kết năm ${new Date().getFullYear()}` });
       onSelectVersion(res.version.id);
-      showToastMsg('Đã tạo phiên bản bảng điểm mới.');
+      onVersionsChanged();
+      showToastMsg(`Đã tạo phiên bản bảng điểm mới (${res.version.code}).`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Lỗi tạo phiên bản.');
+      setError(err instanceof Error ? err.message : 'Lỗi tạo phiên bản bảng điểm.');
+    } finally {
+      setCreatingVersion(false);
     }
   }
 
@@ -299,6 +305,12 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
   if (!detail) {
     return (
       <div className="space-y-4">
+        {error && (
+          <div role="alert" className="p-3.5 rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button type="button" onClick={() => setError('')} className="cursor-pointer"><X className="w-4 h-4" /></button>
+          </div>
+        )}
         <div className="card-surface p-10 text-center space-y-4">
           <AlertCircle className="w-10 h-10 mx-auto text-[#005baa]" />
           <div className="text-lg font-bold">Chưa có phiên bản bảng điểm nào</div>
@@ -353,7 +365,9 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
               </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowNewVersion(false)} className="px-4 py-2 rounded-lg border border-[var(--border-color)] text-sm cursor-pointer">Hủy</button>
-                <button type="submit" className="px-4 py-2 rounded-lg bg-[#005baa] text-white text-sm font-semibold cursor-pointer">Tạo mới</button>
+                <button type="submit" disabled={creatingVersion} className="px-4 py-2 rounded-lg bg-[#005baa] text-white text-sm font-semibold disabled:opacity-60 cursor-pointer">
+                  {creatingVersion ? 'Đang tạo...' : 'Tạo mới'}
+                </button>
               </div>
             </form>
           </div>
@@ -783,7 +797,9 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
             </div>
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setShowNewVersion(false)} className="px-4 py-2 rounded-lg border border-[var(--border-color)] text-sm cursor-pointer">Hủy</button>
-              <button type="submit" className="px-4 py-2 rounded-lg bg-[#005baa] text-white text-sm font-semibold cursor-pointer">Tạo mới</button>
+              <button type="submit" disabled={creatingVersion} className="px-4 py-2 rounded-lg bg-[#005baa] text-white text-sm font-semibold disabled:opacity-60 cursor-pointer">
+                {creatingVersion ? 'Đang tạo...' : 'Tạo mới'}
+              </button>
             </div>
           </form>
         </div>

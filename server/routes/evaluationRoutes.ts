@@ -61,7 +61,13 @@ async function ensureEvaluationsExist(versionId: number): Promise<void> {
 evaluationRouter.get('/dashboard', requireAuth, async (req, res) => {
   try {
     const db = await getDb();
-    const versionId = req.query.versionId ? Number(req.query.versionId) : await resolveDefaultVersionId();
+    let versionId = req.query.versionId ? Number(req.query.versionId) : await resolveDefaultVersionId();
+    if (versionId) {
+      const exists = await db.query('SELECT id FROM scorecard_versions WHERE id = $1', [versionId]);
+      if (exists.rows.length === 0) {
+        versionId = await resolveDefaultVersionId();
+      }
+    }
     if (!versionId) {
       res.json({ version: null, stats: null, units: [] });
       return;
