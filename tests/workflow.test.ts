@@ -77,12 +77,17 @@ test.after(async () => {
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
-test('1. Clean initial state: only admin account, 55 official units, 0 sample scorecards -> Admin creates & publishes scorecard', async () => {
+test('1. Clean initial state: admin + 55 official unit accounts (username=Mã đơn vị, pass=Bcda@1234) & direct login', async () => {
   const adminCookie = await login('admin', 'admin123');
   const usersRes = await request('GET', '/api/admin/users', { cookie: adminCookie });
   assert.equal(usersRes.status, 200);
-  assert.equal(usersRes.json().users.length, 1);
-  assert.equal(usersRes.json().users[0].username, 'admin');
+  assert.equal(usersRes.json().users.length, 56); // 1 admin + 55 Cơ sở Đoàn
+
+  // Direct Chi đoàn login with Mã đơn vị (case-insensitive) & Bcda@1234
+  const ap01Cookie = await login('CD-AP01', 'Bcda@1234');
+  const meRes = await request('GET', '/api/auth/me', { cookie: ap01Cookie });
+  assert.equal(meRes.status, 200);
+  assert.equal(meRes.json().user.unit_code, 'CD-AP01');
 
   const initialVer = (await request('GET', '/api/scorecards', { cookie: adminCookie })).json();
   assert.equal(initialVer.versions.length, 0);

@@ -53,6 +53,15 @@ adminRouter.post('/units', async (req, res) => {
     );
     const unitId = inserted.rows[0].id;
 
+    // Auto-create direct login account for the newly created Cơ sở Đoàn (username = Mã đơn vị, password = Bcda@1234)
+    const defaultUnitPassHash = hashPassword(process.env.DEFAULT_UNIT_PASSWORD || 'Bcda@1234');
+    await db.query(
+      `INSERT INTO users (username, password_hash, full_name, role, unit_id, title, active)
+       VALUES ($1, $2, $3, 'unit', $4, 'Tài khoản Cơ sở Đoàn', TRUE)
+       ON CONFLICT (username) DO NOTHING`,
+      [code.toLowerCase(), defaultUnitPassHash, secretaryName || name, unitId],
+    );
+
     // Auto-create evaluation records for published scorecards
     const pubVersions = await db.query<{ id: number }>(
       `SELECT id FROM scorecard_versions WHERE status = 'published'`,

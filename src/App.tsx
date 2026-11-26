@@ -23,7 +23,10 @@ export function App() {
 
   useEffect(() => {
     apiFetch<{ user: AuthUser }>('/api/auth/me')
-      .then((res) => setUser(res.user))
+      .then((res) => {
+        setUser(res.user);
+        if (res.user.role === 'unit') setActiveTab('scoring');
+      })
       .catch(() => setUser(null))
       .finally(() => setAuthChecked(true));
   }, []);
@@ -92,7 +95,14 @@ export function App() {
   }
 
   if (!user) {
-    return <LoginPage onLogin={(u) => setUser(u)} />;
+    return (
+      <LoginPage
+        onLogin={(u) => {
+          setUser(u);
+          setActiveTab(u.role === 'unit' ? 'scoring' : 'dashboard');
+        }}
+      />
+    );
   }
 
   return (

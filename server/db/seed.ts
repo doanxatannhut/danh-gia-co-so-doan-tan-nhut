@@ -88,13 +88,27 @@ export async function seedIfEmpty(db: DbClient): Promise<void> {
     );
   }
 
-  // 3. Seed all 55 official Cơ sở Đoàn trực thuộc Đoàn xã Tân Nhựt (idempotent)
+  // 3. Seed all 55 official Cơ sở Đoàn trực thuộc Đoàn xã Tân Nhựt & auto-create their login accounts (username = Mã đơn vị, password = Bcda@1234)
+  const defaultUnitPassHash = hashPassword(process.env.DEFAULT_UNIT_PASSWORD || 'Bcda@1234');
   for (const u of OFFICIAL_UNITS) {
     await db.query(
       `INSERT INTO units (code, name, unit_type, secretary_name, phone, member_count, active)
        VALUES ($1, $2, $3, '', '', 0, TRUE)
        ON CONFLICT (code) DO NOTHING`,
       [u.code, u.name, u.unit_type],
+    );
+  }
+
+  // Ensure every active Cơ sở Đoàn has a direct login account (username = lower(code), password = Bcda@1234)
+  const allUnits = await db.query<{ id: number; code: string; name: string }>(
+    `SELECT id, code, name FROM units WHERE active = TRUE`,
+  );
+  for (const unit of allUnits.rows) {
+    await db.query(
+      `INSERT INTO users (username, password_hash, full_name, role, unit_id, title, active)
+       VALUES ($1, $2, $3, 'unit', $4, 'Tài khoản Cơ sở Đoàn', TRUE)
+       ON CONFLICT (username) DO NOTHING`,
+      [unit.code.toLowerCase(), defaultUnitPassHash, unit.name, unit.id],
     );
   }
 }
