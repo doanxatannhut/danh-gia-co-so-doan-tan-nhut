@@ -18,12 +18,15 @@ import {
   Filter,
   Info,
   X,
+  Eye,
+  ExternalLink,
 } from 'lucide-react';
 import type {
   AuthUser,
   DashboardUnitRow,
   EvaluationDetail,
   EvaluationScore,
+  EvidenceFile,
 } from '../types';
 import {
   apiFetch,
@@ -82,6 +85,12 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [overallComment, setOverallComment] = useState('');
   const [actionBusy, setActionBusy] = useState(false);
+  const [previewModal, setPreviewModal] = useState<{
+    criterionCode: string;
+    criterionTitle: string;
+    files: EvidenceFile[];
+    activeIndex: number;
+  } | null>(null);
 
   const saveTimers = useRef<Record<number, number>>({});
 
@@ -859,18 +868,34 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
 
                             {/* Minh chứng */}
                             <td className="py-3 px-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() => toggleExpand(item.id)}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border transition cursor-pointer ${
-                                  files.length > 0
-                                    ? 'bg-sky-50 border-sky-200 text-sky-700 dark:bg-sky-950/40 dark:border-sky-800 dark:text-sky-300'
-                                    : 'bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700'
-                                }`}
-                              >
-                                <Paperclip className="w-3.5 h-3.5" />
-                                {files.length} tệp
-                              </button>
+                              {files.length > 0 ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewModal({
+                                      criterionCode: item.code,
+                                      criterionTitle: item.title,
+                                      files,
+                                      activeIndex: 0,
+                                    })
+                                  }
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#005baa] hover:bg-[#004a8c] text-white transition cursor-pointer shadow-xs"
+                                  title="Xem minh chứng đính kèm"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                  Xem ({files.length})
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpand(item.id)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border bg-slate-50 border-slate-200 text-slate-500 dark:bg-slate-800 dark:border-slate-700 hover:bg-[var(--bg-subtle)] transition cursor-pointer"
+                                  title="Mở để tải lên minh chứng"
+                                >
+                                  <Paperclip className="w-3.5 h-3.5" />
+                                  0 tệp
+                                </button>
+                              )}
                             </td>
 
                             {/* Nhận xét */}
@@ -959,7 +984,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                                         </div>
                                       ) : (
                                         <ul className="space-y-1.5">
-                                          {files.map((f) => (
+                                          {files.map((f, fileIdx) => (
                                             <li
                                               key={f.id}
                                               className="flex items-center justify-between gap-2 p-2 rounded-lg bg-[var(--bg-subtle)] text-xs"
@@ -967,20 +992,42 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                                               <div className="flex items-center gap-2 min-w-0">
                                                 <FileText className="w-4 h-4 text-[#005baa] shrink-0" />
                                                 <div className="min-w-0">
-                                                  <a
-                                                    href={`/api/evidence/${f.id}`}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="font-medium hover:underline truncate block"
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      setPreviewModal({
+                                                        criterionCode: item.code,
+                                                        criterionTitle: item.title,
+                                                        files,
+                                                        activeIndex: fileIdx,
+                                                      })
+                                                    }
+                                                    className="font-medium hover:underline truncate block text-left cursor-pointer"
                                                   >
                                                     {f.original_name}
-                                                  </a>
+                                                  </button>
                                                   <div className="text-[11px] text-[var(--text-secondary)]">
                                                     {formatFileSize(f.size_bytes)} • {formatDateTime(f.uploaded_at)}
                                                   </div>
                                                 </div>
                                               </div>
                                               <div className="flex items-center gap-1 shrink-0">
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setPreviewModal({
+                                                      criterionCode: item.code,
+                                                      criterionTitle: item.title,
+                                                      files,
+                                                      activeIndex: fileIdx,
+                                                    })
+                                                  }
+                                                  className="inline-flex items-center gap-1 px-2 py-1 rounded bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900/60 text-[#005baa] dark:text-sky-300 font-semibold cursor-pointer"
+                                                  title="Xem minh chứng"
+                                                >
+                                                  <Eye className="w-3.5 h-3.5" />
+                                                  Xem
+                                                </button>
                                                 <a
                                                   href={`/api/evidence/${f.id}?download=1`}
                                                   className="p-1.5 rounded hover:bg-white/60 dark:hover:bg-slate-700 text-sky-700 dark:text-sky-300"
@@ -1350,6 +1397,126 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
           </div>
         </div>
       )}
+
+      {/* Modal: Xem minh chứng (Inline Preview Viewer) */}
+      {previewModal && (() => {
+        const currentFile = previewModal.files[previewModal.activeIndex] ?? previewModal.files[0];
+        if (!currentFile) return null;
+        const lowerName = currentFile.original_name.toLowerCase();
+        const isImage =
+          currentFile.mime_type.startsWith('image/') ||
+          /\.(png|jpe?g|webp|gif)$/.test(lowerName);
+        const isPdf =
+          currentFile.mime_type === 'application/pdf' || lowerName.endsWith('.pdf');
+        const fileUrl = `/api/evidence/${currentFile.id}`;
+
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            onClick={() => setPreviewModal(null)}
+          >
+            <div
+              className="card-surface w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="p-4 border-b border-[var(--border-subtle)] flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-blue-100 dark:bg-blue-950 text-[#005baa] dark:text-sky-300 font-mono text-xs font-bold">
+                      {previewModal.criterionCode}
+                    </span>
+                    <span className="text-xs font-semibold text-[var(--text-secondary)]">
+                      Xem minh chứng ({previewModal.activeIndex + 1}/{previewModal.files.length})
+                    </span>
+                  </div>
+                  <div className="font-bold text-sm mt-1 truncate">{currentFile.original_name}</div>
+                  <div className="text-[11px] text-[var(--text-secondary)]">
+                    {formatFileSize(currentFile.size_bytes)} • Tải lên lúc {formatDateTime(currentFile.uploaded_at)}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <a
+                    href={fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-color)] text-xs font-semibold hover:bg-[var(--bg-subtle)]"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Mở tab mới
+                  </a>
+                  <a
+                    href={`${fileUrl}?download=1`}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#005baa] hover:bg-[#004a8c] text-white text-xs font-semibold"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Tải xuống
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewModal(null)}
+                    className="p-1.5 rounded-lg hover:bg-[var(--bg-subtle)] cursor-pointer"
+                    aria-label="Đóng cửa sổ xem minh chứng"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* File Switcher Tabs if multiple files */}
+              {previewModal.files.length > 1 && (
+                <div className="px-4 py-2 bg-[var(--bg-subtle)] border-b border-[var(--border-subtle)] flex items-center gap-1.5 overflow-x-auto">
+                  {previewModal.files.map((f, idx) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setPreviewModal({ ...previewModal, activeIndex: idx })}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium whitespace-nowrap transition cursor-pointer ${
+                        idx === previewModal.activeIndex
+                          ? 'bg-[#005baa] text-white'
+                          : 'bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      {idx + 1}. {f.original_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Preview Body */}
+              <div className="flex-1 overflow-auto p-4 bg-slate-100/70 dark:bg-slate-900/70 flex items-center justify-center min-h-[360px]">
+                {isImage ? (
+                  <img
+                    src={fileUrl}
+                    alt={currentFile.original_name}
+                    className="max-w-full max-h-[68vh] rounded-lg shadow-sm object-contain"
+                  />
+                ) : isPdf ? (
+                  <iframe
+                    src={fileUrl}
+                    title={currentFile.original_name}
+                    className="w-full h-[68vh] rounded-lg border border-[var(--border-subtle)] bg-white"
+                  />
+                ) : (
+                  <div className="text-center space-y-3 p-6 max-w-md">
+                    <FileText className="w-12 h-12 mx-auto text-[#005baa]" />
+                    <div className="font-bold text-sm">{currentFile.original_name}</div>
+                    <p className="text-xs text-[var(--text-secondary)]">
+                      Tệp Word/Excel không hỗ trợ xem trực tiếp trên trình duyệt. Bạn hãy nhấn <strong>Tải xuống</strong> để mở bằng Microsoft Office / Google Docs.
+                    </p>
+                    <a
+                      href={`${fileUrl}?download=1`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#005baa] hover:bg-[#004a8c] text-white text-xs font-semibold"
+                    >
+                      <Download className="w-4 h-4" /> Tải xuống tệp minh chứng
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
