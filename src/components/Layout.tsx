@@ -12,11 +12,12 @@ import {
   Sun,
   Moon,
   ChevronDown,
+  Users,
 } from 'lucide-react';
 import type { AuthUser, ScorecardVersion } from '../types';
 import { ROLE_LABELS } from '../utils/api';
 
-export type NavTab = 'dashboard' | 'scoring' | 'criteria' | 'reports' | 'audit';
+export type NavTab = 'dashboard' | 'scoring' | 'criteria' | 'users' | 'reports' | 'audit';
 
 interface LayoutProps {
   user: AuthUser;
@@ -71,6 +72,12 @@ export const Layout: React.FC<LayoutProps> = ({
       id: 'criteria',
       label: 'Quản lý tiêu chí (60/40)',
       icon: <SlidersHorizontal className="w-4 h-4" />,
+      visible: user.role === 'admin',
+    },
+    {
+      id: 'users',
+      label: 'Tài khoản & Cơ sở Đoàn',
+      icon: <Users className="w-4 h-4" />,
       visible: user.role === 'admin',
     },
     {

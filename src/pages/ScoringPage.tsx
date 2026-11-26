@@ -281,7 +281,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
     const revVal = draft.review_score === '' ? null : Number(draft.review_score);
 
     if (revVal !== null && (Number.isNaN(revVal) || revVal < 0 || revVal > maxScore)) {
-      setError(`Điểm thẩm định phải nằm trong khoảng 0 đến ${maxScore}.`);
+      setError(`Điểm Đoàn xã chấm phải nằm trong khoảng 0 đến ${maxScore}.`);
       return;
     }
     if (revVal !== null && selfVal !== null && revVal !== selfVal && !draft.adjustment_reason.trim()) {
@@ -515,7 +515,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                   isCompleted ? 'text-emerald-700 dark:text-emerald-300' : 'text-orange-700 dark:text-orange-300'
                 }`}
               >
-                {isCompleted ? 'Chính thức' : 'Thẩm định'}
+                {isCompleted ? 'Chính thức' : 'Đoàn xã chấm'}
               </div>
               <div
                 className={`text-lg sm:text-xl font-bold ${
@@ -619,7 +619,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
               <span className="w-2.5 h-2.5 rounded-full bg-blue-600" /> Tự đánh giá
             </span>
             <span className="inline-flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-orange-500" /> Thẩm định
+              <span className="w-2.5 h-2.5 rounded-full bg-orange-500" /> Điểm Đoàn xã chấm
             </span>
             <span className="inline-flex items-center gap-1">
               <span className="w-2.5 h-2.5 rounded-full bg-slate-400" /> Chưa chấm
@@ -645,7 +645,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                 <th className="py-3 px-3 font-semibold">Nội dung đánh giá</th>
                 <th className="py-3 px-3 font-semibold w-24 text-center">Điểm tối đa</th>
                 <th className="py-3 px-3 font-semibold w-28 text-center">Điểm tự chấm</th>
-                <th className="py-3 px-3 font-semibold w-28 text-center">Điểm thẩm định</th>
+                <th className="py-3 px-3 font-semibold w-32 text-center">Điểm Đoàn xã chấm</th>
                 <th className="py-3 px-3 font-semibold w-28 text-center">Minh chứng</th>
                 <th className="py-3 px-3 font-semibold w-48">Nhận xét</th>
               </tr>
@@ -818,7 +818,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                                     min={0}
                                     max={item.max_score}
                                     step={0.5}
-                                    aria-label={`Điểm thẩm định ${item.code}`}
+                                    aria-label={`Điểm Đoàn xã chấm ${item.code}`}
                                     value={rDraft.review_score}
                                     onChange={(e) => {
                                       const val = e.target.value;
@@ -1099,7 +1099,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                                       ) : (
                                         <div className="space-y-1.5 text-xs">
                                           <div>
-                                            <span className="text-[var(--text-secondary)]">Điểm thẩm định: </span>
+                                            <span className="text-[var(--text-secondary)]">Điểm Đoàn xã chấm: </span>
                                             <strong className="text-orange-700 dark:text-orange-300">
                                               {rDraft.review_score !== '' ? `${rDraft.review_score} / ${item.max_score}` : 'Chưa thẩm định'}
                                             </strong>
@@ -1314,7 +1314,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
           <div className="card-surface max-w-md w-full p-6 space-y-4">
             <h3 className="text-lg font-bold">Xác nhận kết quả thẩm định chính thức</h3>
             <p className="text-xs text-[var(--text-secondary)]">
-              Điểm thẩm định của <strong>{ev.unit_name}</strong> là{' '}
+              Điểm Đoàn xã chấm của <strong>{ev.unit_name}</strong> là{' '}
               <strong className="text-emerald-700 dark:text-emerald-300">
                 {formatScore(ev.review_total)}/{ev.active_max_score}
               </strong>

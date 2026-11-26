@@ -105,7 +105,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     name: u.unit_code,
     fullName: u.unit_name,
     'Tự đánh giá': u.self_total,
-    'Thẩm định': u.review_total ?? 0,
+    'Điểm Đoàn xã chấm': u.review_total ?? 0,
   }));
 
   return (
@@ -208,9 +208,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           <div className="card-surface p-5 lg:col-span-7">
-            <h2 className="text-sm font-bold mb-1">So sánh điểm Tự đánh giá & Thẩm định</h2>
+            <h2 className="text-sm font-bold mb-1">So sánh điểm Tự đánh giá & Điểm Đoàn xã chấm</h2>
             <p className="text-xs text-[var(--text-secondary)] mb-4">
-              Thang điểm hiệu lực hiện tại: {points.activeMaxScore} điểm (Xanh dương: Tự chấm • Cam: Thẩm định)
+              Thang điểm hiệu lực hiện tại: {points.activeMaxScore} điểm (Xanh dương: Tự chấm • Cam: Điểm Đoàn xã chấm)
             </p>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -224,7 +224,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                   />
                   <Legend wrapperStyle={{ fontSize: '12px' }} />
                   <Bar dataKey="Tự đánh giá" fill="#2563eb" radius={[6, 6, 0, 0]} />
-                  <Bar dataKey="Thẩm định" fill="#ea580c" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="Điểm Đoàn xã chấm" fill="#ea580c" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -280,7 +280,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <th className="py-3 px-3 font-semibold">Trạng thái</th>
                 <th className="py-3 px-3 font-semibold text-center">Tiến độ tiêu chí</th>
                 <th className="py-3 px-3 font-semibold text-center text-blue-700 dark:text-blue-400">Điểm tự chấm</th>
-                <th className="py-3 px-3 font-semibold text-center text-orange-700 dark:text-orange-400">Điểm thẩm định</th>
+                <th className="py-3 px-3 font-semibold text-center text-orange-700 dark:text-orange-400">Điểm Đoàn xã chấm</th>
                 <th className="py-3 px-3 font-semibold text-center">Chênh lệch</th>
                 <th className="py-3 px-3 font-semibold">Xếp loại chính thức</th>
                 <th className="py-3 px-4 font-semibold text-right">Thao tác</th>

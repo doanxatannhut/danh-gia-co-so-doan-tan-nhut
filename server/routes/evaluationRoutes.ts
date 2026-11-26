@@ -318,7 +318,7 @@ evaluationRouter.put('/evaluations/:id/self-score', requireAuth, async (req, res
       return;
     }
     if (req.user!.role === 'reviewer') {
-      res.status(403).json({ error: 'Cán bộ thẩm định không nhập điểm tự chấm của Cơ sở Đoàn.' });
+      res.status(403).json({ error: 'Cán bộ Đoàn xã không nhập điểm tự chấm của Cơ sở Đoàn.' });
       return;
     }
     if (!['not_started', 'self_assessing', 'needs_revision'].includes(evaluation.status)) {
@@ -498,7 +498,7 @@ evaluationRouter.put('/evaluations/:id/review-score', requireAuth, requireRoles(
     const maxScore = Number(criterion.max_score);
     const reviewScore = reviewScoreRaw === null || reviewScoreRaw === '' || reviewScoreRaw === undefined ? null : Number(reviewScoreRaw);
     if (reviewScore !== null && (Number.isNaN(reviewScore) || reviewScore < 0 || reviewScore > maxScore)) {
-      res.status(400).json({ error: `Điểm thẩm định của tiêu chí ${criterion.code} phải từ 0 đến ${maxScore}.` });
+      res.status(400).json({ error: `Điểm Đoàn xã chấm của tiêu chí ${criterion.code} phải từ 0 đến ${maxScore}.` });
       return;
     }
 

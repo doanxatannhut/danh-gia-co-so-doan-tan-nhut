@@ -222,7 +222,7 @@ reportRouter.get('/export/excel', requireAuth, async (req, res) => {
       'Trạng thái',
       'Tiến độ (%)',
       'Điểm tự chấm',
-      'Điểm thẩm định',
+      'Điểm Đoàn xã chấm',
       'Chênh lệch',
       'Xếp loại chính thức',
     ]);
@@ -345,7 +345,7 @@ reportRouter.get('/export/pdf', requireAuth, async (req, res) => {
       { label: 'Tên Cơ sở Đoàn', x: 136, w: 185 },
       { label: 'Trạng thái', x: 321, w: 92 },
       { label: 'Tự chấm', x: 413, w: 62 },
-      { label: 'Thẩm định', x: 475, w: 68 },
+      { label: 'Đoàn xã chấm', x: 475, w: 68 },
       { label: 'Chênh lệch', x: 543, w: 65 },
       { label: 'Chính thức', x: 608, w: 66 },
       { label: 'Xếp loại', x: 674, w: 130 },

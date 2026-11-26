@@ -88,6 +88,6 @@ export const STATUS_META: Record<
 
 export const ROLE_LABELS: Record<string, string> = {
   admin: 'Quản trị viên Đoàn xã',
-  reviewer: 'Cán bộ thẩm định',
+  reviewer: 'Cán bộ Đoàn xã',
   unit: 'Cơ sở Đoàn',
 };

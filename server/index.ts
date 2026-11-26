@@ -7,6 +7,7 @@ import { getDb } from './db/client.js';
 import { initSchema } from './db/schema.js';
 import { seedIfEmpty } from './db/seed.js';
 import { authRouter } from './routes/authRoutes.js';
+import { adminRouter } from './routes/adminRoutes.js';
 import { scorecardRouter } from './routes/scorecardRoutes.js';
 import { evaluationRouter } from './routes/evaluationRoutes.js';
 import { reportRouter } from './routes/reportRoutes.js';
@@ -26,6 +27,7 @@ export async function createApp() {
   });
 
   app.use('/api/auth', authRouter);
+  app.use('/api/admin', adminRouter);
   app.use('/api/scorecards', scorecardRouter);
   app.use('/api', evaluationRouter);
   app.use('/api/reports', reportRouter);

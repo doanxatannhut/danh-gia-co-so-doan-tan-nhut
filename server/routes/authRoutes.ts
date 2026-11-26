@@ -11,24 +11,6 @@ import {
 
 export const authRouter = Router();
 
-authRouter.get('/demo-accounts', async (_req, res) => {
-  const db = await getDb();
-  const result = await db.query<{
-    username: string;
-    full_name: string;
-    role: string;
-    title: string;
-    unit_name: string | null;
-  }>(
-    `SELECT u.username, u.full_name, u.role, u.title, un.name AS unit_name
-     FROM users u
-     LEFT JOIN units un ON un.id = u.unit_id
-     WHERE u.active = TRUE
-     ORDER BY CASE u.role WHEN 'admin' THEN 1 WHEN 'reviewer' THEN 2 ELSE 3 END, u.id`,
-  );
-  res.json({ accounts: result.rows });
-});
-
 authRouter.post('/login', async (req, res) => {
   try {
     const username = String(req.body?.username ?? '').trim().toLowerCase();

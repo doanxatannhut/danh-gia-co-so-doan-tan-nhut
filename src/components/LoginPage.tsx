@@ -1,24 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import { Award, ShieldCheck, UserCheck, Users, LogIn, Lock, User } from 'lucide-react';
-import type { AuthUser, DemoAccount } from '../types';
-import { apiFetch, ROLE_LABELS } from '../utils/api';
+import React, { useState } from 'react';
+import { Award, ShieldCheck, LogIn, Lock, User } from 'lucide-react';
+import type { AuthUser } from '../types';
+import { apiFetch } from '../utils/api';
 
 interface LoginPageProps {
   onLogin: (user: AuthUser) => void;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [demoAccounts, setDemoAccounts] = useState<DemoAccount[]>([]);
-
-  useEffect(() => {
-    apiFetch<{ accounts: DemoAccount[] }>('/api/auth/demo-accounts')
-      .then((res) => setDemoAccounts(res.accounts))
-      .catch(() => {});
-  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -35,14 +28,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
     } finally {
       setLoading(false);
     }
-  }
-
-  function pickDemo(acc: DemoAccount) {
-    setUsername(acc.username);
-    if (acc.role === 'admin') setPassword('admin123');
-    else if (acc.role === 'reviewer') setPassword('thamdinh123');
-    else setPassword('doan123');
-    setError('');
   }
 
   return (
@@ -81,7 +66,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               <div className="text-xs sm:text-sm">
                 <div className="font-semibold">Quy trình 2 vòng minh bạch</div>
                 <div className="text-sky-100/90 mt-0.5">
-                  Cơ sở Đoàn tự đánh giá, đính kèm minh chứng → Đoàn xã thẩm định & lưu lịch sử chi tiết.
+                  Cơ sở Đoàn tự đánh giá, đính kèm minh chứng → Đoàn xã chấm điểm & lưu lịch sử chi tiết.
                 </div>
               </div>
             </div>
@@ -89,7 +74,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         </div>
 
         <div className="relative z-10 mt-8 pt-6 border-t border-white/15 text-xs text-sky-100/80">
-          Đoàn TNCS Hồ Chí Minh xã Tân Nhựt • Phiên bản 1.0 • Tích hợp hệ sinh thái Dashboard Tuổi trẻ Tân Nhựt
+          Đoàn TNCS Hồ Chí Minh xã Tân Nhựt • Tích hợp hệ sinh thái Dashboard Tuổi trẻ Tân Nhựt
         </div>
       </div>
 
@@ -99,7 +84,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Đăng nhập hệ thống</h2>
             <p className="text-sm text-[var(--text-secondary)] mt-1">
-              Sử dụng tài khoản được Đoàn xã Tân Nhựt cấp để truy cập phân hệ.
+              Sử dụng tài khoản do Quản trị viên Đoàn xã Tân Nhựt cấp để truy cập phân hệ.
             </p>
           </div>
 
@@ -126,7 +111,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full pl-9 pr-3 py-2.5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)] text-sm"
-                  placeholder="Ví dụ: admin, thamdinh, cd_ap1..."
+                  placeholder="Nhập tên đăng nhập"
                   required
                 />
               </div>
@@ -160,42 +145,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               {loading ? 'Đang xác thực...' : 'Đăng nhập'}
             </button>
           </form>
-
-          {/* Quick Role Switcher for Demo / Testing */}
-          {demoAccounts.length > 0 && (
-            <div className="card-surface p-4 space-y-2.5">
-              <div className="text-xs font-semibold uppercase tracking-wide text-[var(--text-secondary)]">
-                Tài khoản trải nghiệm nhanh theo vai trò
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
-                {demoAccounts.map((acc) => {
-                  const isSelected = username === acc.username;
-                  return (
-                    <button
-                      key={acc.username}
-                      type="button"
-                      onClick={() => pickDemo(acc)}
-                      className={`text-left p-2.5 rounded-lg border text-xs transition cursor-pointer ${
-                        isSelected
-                          ? 'border-[#005baa] bg-blue-50/70 dark:bg-blue-950/40'
-                          : 'border-[var(--border-subtle)] hover:bg-[var(--bg-subtle)]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 font-semibold">
-                        {acc.role === 'admin' && <ShieldCheck className="w-3.5 h-3.5 text-[#005baa] shrink-0" />}
-                        {acc.role === 'reviewer' && <UserCheck className="w-3.5 h-3.5 text-orange-600 shrink-0" />}
-                        {acc.role === 'unit' && <Users className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
-                        <span className="truncate">{acc.unit_name || acc.full_name}</span>
-                      </div>
-                      <div className="text-[11px] text-[var(--text-secondary)] mt-0.5 truncate">
-                        {ROLE_LABELS[acc.role]} • <code className="font-mono">{acc.username}</code>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

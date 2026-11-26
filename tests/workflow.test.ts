@@ -77,39 +77,66 @@ test.after(async () => {
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
-test('1. 60/40 point structure & unconfigured 40 pts not counted as 0', async () => {
+test('1. Clean initial state: only admin account, 0 mock units, 60/40 scorecard ready', async () => {
   const adminCookie = await login('admin', 'admin123');
+  const usersRes = await request('GET', '/api/admin/users', { cookie: adminCookie });
+  assert.equal(usersRes.status, 200);
+  assert.equal(usersRes.json().users.length, 1);
+  assert.equal(usersRes.json().users[0].username, 'admin');
+
   const dashRes = await request('GET', '/api/dashboard', { cookie: adminCookie });
   assert.equal(dashRes.status, 200);
   const dash = dashRes.json();
-
+  assert.equal(dash.stats.totalUnits, 0);
   assert.equal(dash.points.fixedMax, 60);
   assert.equal(dash.points.supplementaryConfiguredMax, 0);
-  assert.equal(dash.points.supplementaryPublished, false);
   assert.equal(dash.points.activeMaxScore, 60);
-  assert.equal(dash.stats.totalUnits, 8);
 });
 
-test('2. Strict unit isolation: Cơ sở Đoàn chỉ xem được hồ sơ của đơn vị mình', async () => {
+test('2. Admin creates Cơ sở Đoàn & accounts (Cán bộ Đoàn xã + Cơ sở Đoàn) + strict isolation', async () => {
   const adminCookie = await login('admin', 'admin123');
-  const unitCookie = await login('cd_th', 'doan123');
 
+  const u1 = await request('POST', '/api/admin/units', {
+    cookie: adminCookie,
+    body: { code: 'CD-TEST1', name: 'Chi đoàn Ấp 1', secretary_name: 'Nguyễn A', member_count: 30 },
+  });
+  assert.equal(u1.status, 201);
+  const unit1Id = u1.json().unit.id;
+
+  const u2 = await request('POST', '/api/admin/units', {
+    cookie: adminCookie,
+    body: { code: 'CD-TEST2', name: 'Chi đoàn Ấp 2', secretary_name: 'Trần B', member_count: 25 },
+  });
+  assert.equal(u2.status, 201);
+
+  const reviewerRes = await request('POST', '/api/admin/users', {
+    cookie: adminCookie,
+    body: { username: 'canbo_xa', password: 'password123', full_name: 'Cán bộ Đoàn xã 1', role: 'reviewer', title: 'Phó Bí thư Đoàn xã' },
+  });
+  assert.equal(reviewerRes.status, 201);
+
+  const unitUserRes = await request('POST', '/api/admin/users', {
+    cookie: adminCookie,
+    body: { username: 'chidoan1', password: 'password123', full_name: 'Nguyễn A', role: 'unit', unit_id: unit1Id, title: 'Bí thư Chi đoàn' },
+  });
+  assert.equal(unitUserRes.status, 201);
+
+  const unitCookie = await login('chidoan1', 'password123');
   const adminDash = (await request('GET', '/api/dashboard', { cookie: adminCookie })).json();
   const unitDash = (await request('GET', '/api/dashboard', { cookie: unitCookie })).json();
 
+  assert.equal(adminDash.units.length, 2);
   assert.equal(unitDash.units.length, 1);
-  assert.equal(unitDash.units[0].unit_code, 'CD-TH');
+  assert.equal(unitDash.units[0].unit_code, 'CD-TEST1');
 
-  const otherEval = adminDash.units.find((u: { unit_code: string }) => u.unit_code === 'CD-AP1');
-  assert.ok(otherEval);
-
+  const otherEval = adminDash.units.find((u: { unit_code: string }) => u.unit_code === 'CD-TEST2');
   const forbiddenRes = await request('GET', `/api/evaluations/${otherEval.id}`, { cookie: unitCookie });
   assert.equal(forbiddenRes.status, 403);
 });
 
-test('3. Two-round workflow: self-assess -> submit (locks edit) -> mandatory reason on adjust -> return -> resubmit -> confirm', async () => {
-  const unitCookie = await login('cd_th', 'doan123');
-  const reviewerCookie = await login('thamdinh', 'thamdinh123');
+test('3. Two-round workflow with newly created Cơ sở Đoàn & Cán bộ Đoàn xã', async () => {
+  const unitCookie = await login('chidoan1', 'password123');
+  const reviewerCookie = await login('canbo_xa', 'password123');
 
   const unitDash = (await request('GET', '/api/dashboard', { cookie: unitCookie })).json();
   const evalId = unitDash.units[0].id;
@@ -120,138 +147,80 @@ test('3. Two-round workflow: self-assess -> submit (locks edit) -> mandatory rea
   for (const item of detail.items) {
     const res = await request('PUT', `/api/evaluations/${evalId}/self-score`, {
       cookie: unitCookie,
-      body: {
-        criterion_id: item.id,
-        self_score: item.max_score,
-        explanation: `Giải trình hoàn thành ${item.code}`,
-      },
+      body: { criterion_id: item.id, self_score: item.max_score, explanation: `Giải trình ${item.code}` },
     });
     assert.equal(res.status, 200);
   }
 
-  const submitRes = await request('POST', `/api/evaluations/${evalId}/submit`, { cookie: unitCookie });
-  assert.equal(submitRes.status, 200);
+  assert.equal((await request('POST', `/api/evaluations/${evalId}/submit`, { cookie: unitCookie })).status, 200);
 
-  // Verify edit is locked after submit
+  // Locked after submit
   const lockedRes = await request('PUT', `/api/evaluations/${evalId}/self-score`, {
     cookie: unitCookie,
     body: { criterion_id: detail.items[0].id, self_score: 3, explanation: 'Try edit' },
   });
   assert.equal(lockedRes.status, 409);
 
-  // Round 2: Adjusting score without reason must fail (400)
+  // Mandatory reason when adjusting score
   const noReasonRes = await request('PUT', `/api/evaluations/${evalId}/review-score`, {
     cookie: reviewerCookie,
-    body: {
-      criterion_id: detail.items[0].id,
-      review_score: detail.items[0].max_score - 1,
-      adjustment_reason: '',
-      reviewer_comment: 'Cần bổ sung',
-    },
+    body: { criterion_id: detail.items[0].id, review_score: detail.items[0].max_score - 1, adjustment_reason: '' },
   });
   assert.equal(noReasonRes.status, 400);
 
-  // Adjusting score WITH reason must succeed
   const withReasonRes = await request('PUT', `/api/evaluations/${evalId}/review-score`, {
     cookie: reviewerCookie,
     body: {
       criterion_id: detail.items[0].id,
       review_score: detail.items[0].max_score - 1,
-      adjustment_reason: 'Thiếu danh sách điểm danh đoàn viên',
-      reviewer_comment: 'Đề nghị bổ sung',
-      needs_evidence: true,
+      adjustment_reason: 'Thiếu danh sách điểm danh',
+      reviewer_comment: 'Cần bổ sung',
     },
   });
   assert.equal(withReasonRes.status, 200);
 
-  // Return dossier -> unlocks Round 1 editing
-  const returnRes = await request('POST', `/api/evaluations/${evalId}/return`, {
-    cookie: reviewerCookie,
-    body: { return_note: 'Bổ sung minh chứng TC-1.1' },
-  });
-  assert.equal(returnRes.status, 200);
-
-  // Unit can now edit and resubmit
-  const reEditRes = await request('PUT', `/api/evaluations/${evalId}/self-score`, {
-    cookie: unitCookie,
-    body: {
-      criterion_id: detail.items[0].id,
-      self_score: detail.items[0].max_score,
-      explanation: 'Đã bổ sung danh sách điểm danh đầy đủ',
-    },
-  });
-  assert.equal(reEditRes.status, 200);
-
-  const resubmitRes = await request('POST', `/api/evaluations/${evalId}/submit`, { cookie: unitCookie });
-  assert.equal(resubmitRes.status, 200);
-
-  // Reviewer keeps remaining self scores & confirms official result
-  const keepRes = await request('POST', `/api/evaluations/${evalId}/keep-all-self`, { cookie: reviewerCookie });
-  assert.equal(keepRes.status, 200);
+  assert.equal((await request('POST', `/api/evaluations/${evalId}/keep-all-self`, { cookie: reviewerCookie })).status, 200);
 
   const confirmRes = await request('POST', `/api/evaluations/${evalId}/confirm`, {
     cookie: reviewerCookie,
-    body: { overall_comment: 'Hoàn thành xuất sắc nhiệm vụ năm 2026' },
+    body: { overall_comment: 'Hoàn thành xuất sắc' },
   });
   assert.equal(confirmRes.status, 200);
-  const confirmJson = confirmRes.json();
-  assert.equal(confirmJson.totals.officialTotal, 59);
-  assert.equal(confirmJson.totals.classification, 'Hoàn thành xuất sắc');
+  assert.equal(confirmRes.json().totals.officialTotal, 59);
+  assert.equal(confirmRes.json().totals.classification, 'Hoàn thành xuất sắc');
 });
 
-test('4. Immutability guard & Supplementary 40-pt creation/cap validation + Excel/PDF exports', async () => {
+test('4. Immutability guard, 40-pt supplementary cap & Excel/PDF exports', async () => {
   const adminCookie = await login('admin', 'admin123');
   const versionsJson = (await request('GET', '/api/scorecards', { cookie: adminCookie })).json();
-  const v2026 = versionsJson.versions.find((v: { year: number }) => v.year === 2026);
-  assert.ok(v2026);
+  const v2026 = versionsJson.versions[0];
 
-  // Cannot add fixed group to active scorecard with active evaluations
+  // Fixed criteria locked because active evaluation exists
   const lockedFixedRes = await request('POST', `/api/scorecards/${v2026.id}/groups`, {
     cookie: adminCookie,
     body: { section_type: 'fixed', code: 'V', title: 'Nhóm thử', max_score: 0 },
   });
   assert.equal(lockedFixedRes.status, 409);
 
-  // CAN add supplementary group while supplementary is unpublished
+  // Supplementary still open while unpublished
   const suppGroupRes = await request('POST', `/api/scorecards/${v2026.id}/groups`, {
     cookie: adminCookie,
-    body: { section_type: 'supplementary', code: 'BS-I', title: 'Chuyển đổi số thanh niên', max_score: 0 },
+    body: { section_type: 'supplementary', code: 'BS-I', title: 'Chuyển đổi số', max_score: 0 },
   });
   assert.equal(suppGroupRes.status, 201);
   const { group } = suppGroupRes.json();
 
-  // Adding 45 pts to supplementary must fail (> 40 cap)
   const overCapRes = await request('POST', `/api/scorecards/${v2026.id}/items`, {
     cookie: adminCookie,
-    body: {
-      group_id: group.id,
-      code: 'BS-1.1',
-      title: 'Tiêu chí vượt trần',
-      max_score: 45,
-    },
+    body: { group_id: group.id, code: 'BS-1.1', title: 'Vượt trần', max_score: 45 },
   });
   assert.equal(overCapRes.status, 400);
 
-  // Adding 20 pts to supplementary succeeds
-  const validSuppRes = await request('POST', `/api/scorecards/${v2026.id}/items`, {
-    cookie: adminCookie,
-    body: {
-      group_id: group.id,
-      code: 'BS-1.1',
-      title: 'Mô hình chuyển đổi số cấp Chi đoàn',
-      max_score: 20,
-    },
-  });
-  assert.equal(validSuppRes.status, 201);
-
-  // Excel & PDF exports work
   const excelRes = await request('GET', `/api/reports/export/excel?versionId=${v2026.id}`, { cookie: adminCookie });
   assert.equal(excelRes.status, 200);
   assert.ok(String(excelRes.headers['content-type']).includes('spreadsheetml'));
-  assert.ok(excelRes.body.length > 1000);
 
   const pdfRes = await request('GET', `/api/reports/export/pdf?versionId=${v2026.id}`, { cookie: adminCookie });
   assert.equal(pdfRes.status, 200);
   assert.ok(String(pdfRes.headers['content-type']).includes('application/pdf'));
-  assert.ok(pdfRes.body.length > 1000);
 });

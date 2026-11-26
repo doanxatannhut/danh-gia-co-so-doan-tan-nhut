@@ -6,6 +6,7 @@ import { Layout, type NavTab } from './components/Layout';
 import { DashboardPage } from './pages/DashboardPage';
 import { ScoringPage } from './pages/ScoringPage';
 import { CriteriaManagerPage } from './pages/CriteriaManagerPage';
+import { AdminUsersUnitsPage } from './pages/AdminUsersUnitsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 
@@ -139,6 +140,13 @@ export function App() {
             loadVersions();
             loadDashboard(selectedVersionId);
           }}
+        />
+      )}
+
+      {activeTab === 'users' && user.role === 'admin' && (
+        <AdminUsersUnitsPage
+          currentUser={user}
+          onDataChanged={() => loadDashboard(selectedVersionId)}
         />
       )}
 
