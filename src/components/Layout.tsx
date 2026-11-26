@@ -64,7 +64,7 @@ export const Layout: React.FC<LayoutProps> = ({
     },
     {
       id: 'scoring',
-      label: user.role === 'unit' ? 'Bảng tự đánh giá' : 'Hồ sơ & Thẩm định',
+      label: user.role === 'unit' ? 'Bảng tự đánh giá' : 'Hồ sơ & Đánh giá',
       icon: <ClipboardCheck className="w-4 h-4" />,
       visible: true,
     },

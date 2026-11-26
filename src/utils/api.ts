@@ -70,7 +70,7 @@ export const STATUS_META: Record<
     dotClass: 'bg-sky-500',
   },
   under_review: {
-    label: 'Đang thẩm định',
+    label: 'Đang đánh giá',
     badgeClass: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/60 dark:text-orange-300 dark:border-orange-800',
     dotClass: 'bg-orange-500',
   },

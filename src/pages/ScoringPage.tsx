@@ -285,7 +285,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
       return;
     }
     if (revVal !== null && selfVal !== null && revVal !== selfVal && !draft.adjustment_reason.trim()) {
-      setError('Bắt buộc nhập lý do điều chỉnh điểm khi điểm thẩm định khác điểm tự chấm.');
+      setError('Bắt buộc nhập lý do điều chỉnh điểm khi điểm Đoàn xã chấm khác điểm tự chấm.');
       setExpandedIds((prev) => new Set(prev).add(criterionId));
       return;
     }
@@ -305,9 +305,9 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
       });
       await loadDetail(ev.id);
       onDataChanged();
-      showToastMsg('Đã lưu điểm thẩm định và ghi nhận lịch sử.');
+      showToastMsg('Đã lưu điểm Đoàn xã chấm và ghi nhận lịch sử.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể lưu điểm thẩm định.');
+      setError(err instanceof Error ? err.message : 'Không thể lưu điểm Đoàn xã chấm.');
     } finally {
       setSavingReviewId(null);
     }
@@ -368,7 +368,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
       });
       await loadDetail(ev.id);
       onDataChanged();
-      showToastMsg(`Đã giữ nguyên điểm tự chấm cho ${res.count} tiêu chí chưa thẩm định.`);
+      showToastMsg(`Đã giữ nguyên điểm tự chấm cho ${res.count} tiêu chí chưa đánh giá.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Lỗi áp dụng điểm.');
     } finally {
@@ -411,7 +411,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
       setShowConfirmModal(false);
       await loadDetail(ev.id);
       onDataChanged();
-      showToastMsg('Đã xác nhận kết quả thẩm định chính thức!');
+      showToastMsg('Đã xác nhận kết quả đánh giá chính thức!');
     } catch (err) {
       setShowConfirmModal(false);
       setError(err instanceof Error ? err.message : 'Không thể xác nhận kết quả.');
@@ -908,7 +908,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                                     {/* Round 1 Explanation */}
                                     <div className="p-3.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] space-y-2">
                                       <label className="block text-xs font-bold text-blue-700 dark:text-blue-300 uppercase">
-                                        Giải trình tự đánh giá (Vòng 1 – Cơ sở Đoàn)
+                                        Giải trình tự đánh giá
                                       </label>
                                       {canSelfEdit ? (
                                         <textarea
@@ -1011,7 +1011,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                                     <div className="p-3.5 rounded-xl bg-[var(--bg-surface)] border border-orange-200 dark:border-orange-900/60 space-y-3">
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="text-xs font-bold uppercase text-orange-700 dark:text-orange-300">
-                                          Thẩm định của Đoàn xã (Vòng 2)
+                                          Đánh giá của Đoàn xã
                                         </span>
                                         {canReviewEdit && selfNum !== null && (
                                           <button
@@ -1093,7 +1093,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                                             className="w-full py-2 px-3 rounded-lg bg-orange-600 hover:bg-orange-700 text-white font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
                                           >
                                             <Save className="w-3.5 h-3.5" />
-                                            {savingReviewId === item.id ? 'Đang lưu...' : 'Lưu thẩm định tiêu chí này'}
+                                            {savingReviewId === item.id ? 'Đang lưu...' : 'Lưu đánh giá tiêu chí này'}
                                           </button>
                                         </div>
                                       ) : (
@@ -1101,7 +1101,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                                           <div>
                                             <span className="text-[var(--text-secondary)]">Điểm Đoàn xã chấm: </span>
                                             <strong className="text-orange-700 dark:text-orange-300">
-                                              {rDraft.review_score !== '' ? `${rDraft.review_score} / ${item.max_score}` : 'Chưa thẩm định'}
+                                              {rDraft.review_score !== '' ? `${rDraft.review_score} / ${item.max_score}` : 'Chưa đánh giá'}
                                             </strong>
                                           </div>
                                           {rDraft.adjustment_reason && (
@@ -1134,7 +1134,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
                                             <li key={h.id} className="text-xs p-2 rounded-lg bg-[var(--bg-subtle)] space-y-0.5">
                                               <div className="flex items-center justify-between gap-2">
                                                 <span className={`font-bold ${h.round === 'self' ? 'text-blue-700 dark:text-blue-300' : 'text-orange-700 dark:text-orange-300'}`}>
-                                                  {h.round === 'self' ? 'Vòng 1' : 'Vòng 2'}: {formatScore(h.old_score)} → {formatScore(h.new_score)}
+                                                  {h.round === 'self' ? 'Tự đánh giá' : 'Đoàn xã chấm'}: {formatScore(h.old_score)} → {formatScore(h.new_score)}
                                                 </span>
                                                 <span className="text-[10px] text-[var(--text-secondary)]">
                                                   {formatDateTime(h.created_at)}
@@ -1312,7 +1312,7 @@ export const ScoringPage: React.FC<ScoringPageProps> = ({
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/50 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true">
           <div className="card-surface max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-bold">Xác nhận kết quả thẩm định chính thức</h3>
+            <h3 className="text-lg font-bold">Xác nhận kết quả đánh giá chính thức</h3>
             <p className="text-xs text-[var(--text-secondary)]">
               Điểm Đoàn xã chấm của <strong>{ev.unit_name}</strong> là{' '}
               <strong className="text-emerald-700 dark:text-emerald-300">

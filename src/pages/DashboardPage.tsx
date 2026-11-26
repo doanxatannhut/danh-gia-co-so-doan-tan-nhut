@@ -98,7 +98,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     { label: 'Chưa đánh giá', value: stats.notStarted, icon: <Clock className="w-5 h-5" />, color: 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300', filter: 'not_started' },
     { label: 'Đang tự đánh giá', value: stats.selfAssessing, icon: <Edit3 className="w-5 h-5" />, color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/50 dark:text-blue-300', filter: 'self_assessing' },
     { label: 'Đã gửi hồ sơ', value: stats.submitted, icon: <Send className="w-5 h-5" />, color: 'text-sky-600 bg-sky-50 dark:bg-sky-950/50 dark:text-sky-300', filter: 'submitted' },
-    { label: 'Đang thẩm định', value: stats.underReview, icon: <SearchCheck className="w-5 h-5" />, color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/50 dark:text-orange-300', filter: 'under_review' },
+    { label: 'Đang đánh giá', value: stats.underReview, icon: <SearchCheck className="w-5 h-5" />, color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/50 dark:text-orange-300', filter: 'under_review' },
     { label: 'Cần bổ sung', value: stats.needsRevision, icon: <AlertTriangle className="w-5 h-5" />, color: 'text-amber-600 bg-amber-50 dark:bg-amber-950/50 dark:text-amber-300', filter: 'needs_revision' },
     { label: 'Đã hoàn tất', value: stats.completed, icon: <CheckCircle2 className="w-5 h-5" />, color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-300', filter: 'completed' },
   ];
@@ -107,7 +107,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     { name: 'Chưa đánh giá', value: stats.notStarted },
     { name: 'Đang tự chấm', value: stats.selfAssessing },
     { name: 'Đã gửi', value: stats.submitted },
-    { name: 'Đang thẩm định', value: stats.underReview },
+    { name: 'Đang đánh giá', value: stats.underReview },
     { name: 'Cần bổ sung', value: stats.needsRevision },
     { name: 'Hoàn tất', value: stats.completed },
   ].filter((d) => d.value > 0);
@@ -163,28 +163,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* 7 KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3">
-        {kpiCards.map((kpi) => {
-          const active = statusFilter === kpi.filter;
-          return (
-            <button
-              key={kpi.label}
-              type="button"
-              onClick={() => setStatusFilter(kpi.filter)}
-              className={`card-surface p-4 text-left transition hover:shadow-md cursor-pointer ${
-                active ? 'ring-2 ring-[#005baa]' : ''
-              }`}
-            >
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.color}`}>
-                {kpi.icon}
-              </div>
-              <div className="mt-3 text-2xl font-bold tracking-tight">{kpi.value}</div>
-              <div className="text-xs text-[var(--text-secondary)] mt-0.5 leading-tight">{kpi.label}</div>
-            </button>
-          );
-        })}
-      </div>
+      {/* 7 KPI Cards (Commune Admin / Reviewer only — units only see their own dossier) */}
+      {user.role !== 'unit' && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-3">
+          {kpiCards.map((kpi) => {
+            const active = statusFilter === kpi.filter;
+            return (
+              <button
+                key={kpi.label}
+                type="button"
+                onClick={() => setStatusFilter(kpi.filter)}
+                className={`card-surface p-4 text-left transition hover:shadow-md cursor-pointer ${
+                  active ? 'ring-2 ring-[#005baa]' : ''
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${kpi.color}`}>
+                  {kpi.icon}
+                </div>
+                <div className="mt-3 text-2xl font-bold tracking-tight">{kpi.value}</div>
+                <div className="text-xs text-[var(--text-secondary)] mt-0.5 leading-tight">{kpi.label}</div>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Charts Section */}
       {user.role !== 'unit' && (
@@ -251,7 +253,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               {user.role === 'unit' ? 'Hồ sơ đánh giá của đơn vị' : 'Bảng tổng hợp điểm các Cơ sở Đoàn'}
             </h2>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-              Nhấn vào từng đơn vị để mở bảng điểm chi tiết và thực hiện chấm điểm / thẩm định.
+              {user.role === 'unit'
+                ? 'Nhấn "Mở bảng điểm" để thực hiện tự đánh giá và theo dõi kết quả của đơn vị.'
+                : 'Nhấn vào từng đơn vị để mở bảng điểm chi tiết và thực hiện chấm điểm / đánh giá.'}
             </p>
           </div>
           {user.role !== 'unit' && (
@@ -398,7 +402,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                           onClick={() => onOpenEvaluation(u.id)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#005baa] hover:bg-[#004a8c] text-white text-xs font-semibold transition cursor-pointer"
                         >
-                          {user.role === 'unit' ? 'Mở bảng điểm' : 'Xem & Thẩm định'}
+                          {user.role === 'unit' ? 'Mở bảng điểm' : 'Xem & Đánh giá'}
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </td>

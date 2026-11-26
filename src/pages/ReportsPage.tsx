@@ -52,7 +52,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ user, selectedVersionI
       <div className="card-surface p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <div className="text-xs font-bold uppercase tracking-wider text-[#005baa] dark:text-sky-400">
-            Báo cáo tổng hợp & Bảng xếp hạng
+            {user.role === 'unit' ? 'Báo cáo & Kết quả xếp loại của đơn vị' : 'Báo cáo tổng hợp & Bảng xếp hạng'}
           </div>
           <h1 className="text-xl font-bold mt-0.5">{data.version.title}</h1>
           <p className="text-xs text-[var(--text-secondary)] mt-0.5">

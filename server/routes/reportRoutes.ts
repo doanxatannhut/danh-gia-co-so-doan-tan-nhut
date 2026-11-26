@@ -12,7 +12,7 @@ const STATUS_LABELS: Record<string, string> = {
   not_started: 'Chưa đánh giá',
   self_assessing: 'Đang tự đánh giá',
   submitted: 'Đã gửi hồ sơ',
-  under_review: 'Đang thẩm định',
+  under_review: 'Đang đánh giá',
   needs_revision: 'Cần bổ sung',
   completed: 'Đã hoàn tất',
 };
@@ -58,13 +58,6 @@ async function fetchReportData(versionId: number, unitFilterId?: number) {
   );
   const totalActiveCriteria = Number(critCountRes.rows[0]?.cnt ?? 0);
 
-  const params: unknown[] = [versionId, points.supplementaryPublished];
-  let unitClause = '';
-  if (unitFilterId) {
-    params.push(unitFilterId);
-    unitClause = `AND e.unit_id = $${params.length}`;
-  }
-
   const rowsRes = await db.query<{
     evaluation_id: number;
     unit_id: number;
@@ -96,13 +89,13 @@ async function fetchReportData(versionId: number, unitFilterId?: number) {
                AND (ci.section_type = 'fixed' OR $2 = TRUE)) AS review_filled
      FROM evaluations e
      JOIN units u ON u.id = e.unit_id
-     WHERE e.version_id = $1 ${unitClause}
+     WHERE e.version_id = $1
      ORDER BY COALESCE(e.official_total, -1) DESC, COALESCE(e.review_total, -1) DESC, e.self_total DESC, u.code ASC`,
-    params,
+    [versionId, points.supplementaryPublished],
   );
 
   let rank = 1;
-  const rows = rowsRes.rows.map((r) => {
+  const allRankedRows = rowsRes.rows.map((r) => {
     const selfTotal = Number(r.self_total ?? 0);
     const reviewTotal = r.review_total !== null ? Number(r.review_total) : null;
     const officialTotal = r.official_total !== null ? Number(r.official_total) : null;
@@ -133,6 +126,11 @@ async function fetchReportData(versionId: number, unitFilterId?: number) {
       confirmed_at: r.confirmed_at,
     };
   });
+
+  // Strictly filter output rows to the requested unit (enforced for unit role) while preserving true rank
+  const rows = unitFilterId
+    ? allRankedRows.filter((r) => r.unit_id === unitFilterId)
+    : allRankedRows;
 
   return { version, points, totalActiveCriteria, rows };
 }

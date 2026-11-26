@@ -148,21 +148,22 @@ evaluationRouter.get('/dashboard', requireAuth, async (req, res) => {
       };
     });
 
-    const stats = {
-      totalUnits: allRows.length,
-      notStarted: allRows.filter((r) => r.status === 'not_started').length,
-      selfAssessing: allRows.filter((r) => r.status === 'self_assessing').length,
-      submitted: allRows.filter((r) => r.status === 'submitted').length,
-      underReview: allRows.filter((r) => r.status === 'under_review').length,
-      needsRevision: allRows.filter((r) => r.status === 'needs_revision').length,
-      completed: allRows.filter((r) => r.status === 'completed').length,
-      totalActiveCriteria,
-    };
-
-    // Unit role strictly only receives its own unit dossier rows
+    // Unit role strictly only receives its own unit dossier rows and stats
     const visibleUnits = isUnitRole
       ? allRows.filter((r) => r.unit_id === req.user!.unit_id)
       : allRows;
+
+    const statsSource = isUnitRole ? visibleUnits : allRows;
+    const stats = {
+      totalUnits: statsSource.length,
+      notStarted: statsSource.filter((r) => r.status === 'not_started').length,
+      selfAssessing: statsSource.filter((r) => r.status === 'self_assessing').length,
+      submitted: statsSource.filter((r) => r.status === 'submitted').length,
+      underReview: statsSource.filter((r) => r.status === 'under_review').length,
+      needsRevision: statsSource.filter((r) => r.status === 'needs_revision').length,
+      completed: statsSource.filter((r) => r.status === 'completed').length,
+      totalActiveCriteria,
+    };
 
     res.json({
       version,
@@ -378,7 +379,7 @@ evaluationRouter.put('/evaluations/:id/self-score', requireAuth, async (req, res
           criterionId,
           oldScore,
           selfScore,
-          oldScore === null ? 'Nhập điểm tự đánh giá Vòng 1' : 'Cập nhật điểm tự đánh giá Vòng 1',
+          oldScore === null ? 'Nhập điểm tự đánh giá' : 'Cập nhật điểm tự đánh giá',
           req.user!.id,
           req.user!.full_name,
           req.user!.role,
@@ -487,7 +488,7 @@ evaluationRouter.put('/evaluations/:id/review-score', requireAuth, requireRoles(
       return;
     }
     if (!['submitted', 'under_review', 'needs_revision'].includes(evaluation.status)) {
-      res.status(409).json({ error: 'Hồ sơ chưa được Cơ sở Đoàn gửi lên để thẩm định.' });
+      res.status(409).json({ error: 'Hồ sơ chưa được Cơ sở Đoàn gửi lên để đánh giá.' });
       return;
     }
 
@@ -522,7 +523,7 @@ evaluationRouter.put('/evaluations/:id/review-score', requireAuth, requireRoles(
     // MANDATORY RULE: Must provide reason whenever appraisal score differs from self-assessment score
     if (reviewScore !== null && selfScore !== null && reviewScore !== selfScore && !adjustmentReason) {
       res.status(400).json({
-        error: `Bắt buộc ghi lý do điều chỉnh điểm cho tiêu chí ${criterion.code} (tự chấm: ${selfScore} → thẩm định: ${reviewScore}).`,
+        error: `Bắt buộc ghi lý do điều chỉnh điểm cho tiêu chí ${criterion.code} (tự chấm: ${selfScore} → Đoàn xã chấm: ${reviewScore}).`,
       });
       return;
     }
@@ -550,7 +551,7 @@ evaluationRouter.put('/evaluations/:id/review-score', requireAuth, requireRoles(
     if (oldReview !== reviewScore) {
       const historyReason = reviewScore === selfScore
         ? 'Thống nhất giữ nguyên điểm tự chấm của Cơ sở Đoàn'
-        : adjustmentReason || 'Cập nhật điểm thẩm định Vòng 2';
+        : adjustmentReason || 'Cập nhật điểm Đoàn xã chấm';
 
       await db.query(
         `INSERT INTO score_history (evaluation_id, criterion_id, round, old_score, new_score, reason, actor_id, actor_name, actor_role)
@@ -685,7 +686,7 @@ evaluationRouter.post('/evaluations/:id/confirm', requireAuth, requireRoles('adm
 
     if (missingRes.rows.length > 0) {
       res.status(400).json({
-        error: `Còn ${missingRes.rows.length} tiêu chí chưa nhập điểm thẩm định: ${missingRes.rows.map((r) => r.code).join(', ')}.`,
+        error: `Còn ${missingRes.rows.length} tiêu chí chưa nhập điểm Đoàn xã chấm: ${missingRes.rows.map((r) => r.code).join(', ')}.`,
       });
       return;
     }

@@ -34,7 +34,7 @@ export const AuditLogPage: React.FC = () => {
             Nhật ký hoạt động hệ thống (Audit Log)
           </h1>
           <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-            Ghi nhận toàn bộ thao tác đăng nhập, quản lý tiêu chí, gửi hồ sơ, thẩm định, trả hồ sơ và xác nhận kết quả.
+            Ghi nhận toàn bộ thao tác đăng nhập, quản lý tiêu chí, gửi hồ sơ, đánh giá, trả hồ sơ và xác nhận kết quả.
           </p>
         </div>
 
