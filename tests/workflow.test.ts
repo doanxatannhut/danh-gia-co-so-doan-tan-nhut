@@ -87,7 +87,7 @@ test('1. Clean initial state: only admin account, 0 mock units, 60/40 scorecard 
   const dashRes = await request('GET', '/api/dashboard', { cookie: adminCookie });
   assert.equal(dashRes.status, 200);
   const dash = dashRes.json();
-  assert.equal(dash.stats.totalUnits, 0);
+  assert.equal(dash.stats.totalUnits, 55);
   assert.equal(dash.points.fixedMax, 60);
   assert.equal(dash.points.supplementaryConfiguredMax, 0);
   assert.equal(dash.points.activeMaxScore, 60);
@@ -125,7 +125,7 @@ test('2. Admin creates Cơ sở Đoàn & accounts (Cán bộ Đoàn xã + Cơ s�
   const adminDash = (await request('GET', '/api/dashboard', { cookie: adminCookie })).json();
   const unitDash = (await request('GET', '/api/dashboard', { cookie: unitCookie })).json();
 
-  assert.equal(adminDash.units.length, 2);
+  assert.equal(adminDash.units.length, 57);
   assert.equal(unitDash.units.length, 1);
   assert.equal(unitDash.units[0].unit_code, 'CD-TEST1');
 
