@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Award, ShieldCheck, LogIn, Lock, User } from 'lucide-react';
+import { Award, LogIn, Lock, User } from 'lucide-react';
 import type { AuthUser } from '../types';
 import { apiFetch } from '../utils/api';
 
@@ -46,31 +46,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
             Hệ thống quản lý đánh giá, chấm điểm hai vòng và xếp loại chất lượng hoạt động các Cơ sở Đoàn trực thuộc{' '}
             <strong className="text-white">Đoàn TNCS Hồ Chí Minh xã Tân Nhựt</strong>.
           </p>
-
-          <div className="mt-8 grid gap-3 max-w-md">
-            <div className="bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl p-3.5 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-amber-400/20 text-amber-300 flex items-center justify-center shrink-0 font-bold text-sm">
-                60+40
-              </div>
-              <div className="text-xs sm:text-sm">
-                <div className="font-semibold">Thang điểm 100 linh hoạt</div>
-                <div className="text-sky-100/90 mt-0.5">
-                  60 điểm cố định & 40 điểm bổ sung mở rộng sau khi Đoàn xã công bố.
-                </div>
-              </div>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm border border-white/15 rounded-xl p-3.5 flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-400/20 text-emerald-200 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <div className="text-xs sm:text-sm">
-                <div className="font-semibold">Quy trình 2 vòng minh bạch</div>
-                <div className="text-sky-100/90 mt-0.5">
-                  Cơ sở Đoàn tự đánh giá, đính kèm minh chứng → Đoàn xã chấm điểm & lưu lịch sử chi tiết.
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="relative z-10 mt-8 pt-6 border-t border-white/15 text-xs text-sky-100/80">
