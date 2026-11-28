@@ -6,11 +6,23 @@ import { Layout, type NavTab } from './components/Layout';
 import { DashboardPage } from './pages/DashboardPage';
 import { ScoringPage } from './pages/ScoringPage';
 import { CriteriaManagerPage } from './pages/CriteriaManagerPage';
+import { AttendanceAdminPage } from './pages/AttendanceAdminPage';
+import { PublicCheckinPage } from './pages/PublicCheckinPage';
 import { AdminUsersUnitsPage } from './pages/AdminUsersUnitsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 
 export function App() {
+  const isPublicCheckin =
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/diem-danh' || window.location.pathname.startsWith('/diem-danh/'));
+  if (isPublicCheckin) {
+    return <PublicCheckinPage />;
+  }
+  return <AuthenticatedApp />;
+}
+
+function AuthenticatedApp() {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
 
@@ -151,6 +163,10 @@ export function App() {
             loadDashboard(selectedVersionId);
           }}
         />
+      )}
+
+      {activeTab === 'attendance' && (user.role === 'admin' || user.role === 'reviewer') && (
+        <AttendanceAdminPage />
       )}
 
       {activeTab === 'users' && user.role === 'admin' && (

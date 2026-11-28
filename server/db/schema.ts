@@ -160,5 +160,73 @@ export async function initSchema(db: DbClient): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_evidence_files_eval ON evidence_files(evaluation_id);
     CREATE INDEX IF NOT EXISTS idx_score_history_eval ON score_history(evaluation_id, criterion_id);
     CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);
+
+    -- ==================== MODULE ĐIỂM DANH QR ĐỘNG ====================
+    CREATE TABLE IF NOT EXISTS attendance_sessions (
+      id SERIAL PRIMARY KEY,
+      code TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      event_date TEXT NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT NOT NULL,
+      location_name TEXT NOT NULL,
+      latitude DOUBLE PRECISION NOT NULL,
+      longitude DOUBLE PRECISION NOT NULL,
+      radius_meters INTEGER NOT NULL DEFAULT 80,
+      qr_refresh_seconds INTEGER NOT NULL DEFAULT 20,
+      require_photo BOOLEAN NOT NULL DEFAULT FALSE,
+      expected_count INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL CHECK (status IN ('not_open', 'active', 'paused', 'closed')) DEFAULT 'not_open',
+      qr_secret_version INTEGER NOT NULL DEFAULT 1,
+      photo_retention_days INTEGER NOT NULL DEFAULT 30,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS attendance_records (
+      id SERIAL PRIMARY KEY,
+      session_id INTEGER NOT NULL REFERENCES attendance_sessions(id) ON DELETE CASCADE,
+      confirmation_code TEXT UNIQUE NOT NULL,
+      idempotency_key TEXT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('valid', 'pending_verification', 'rejected')) DEFAULT 'valid',
+      qr_token_hash TEXT NOT NULL,
+      device_fingerprint TEXT NOT NULL,
+      device_summary TEXT NOT NULL DEFAULT '',
+      latitude DOUBLE PRECISION,
+      longitude DOUBLE PRECISION,
+      gps_accuracy DOUBLE PRECISION,
+      distance_meters DOUBLE PRECISION,
+      gps_status TEXT NOT NULL CHECK (gps_status IN ('valid', 'out_of_range', 'unavailable', 'suspicious')),
+      qr_status TEXT NOT NULL CHECK (qr_status IN ('valid', 'expired', 'invalid')),
+      photo_stored_name TEXT,
+      photo_status TEXT NOT NULL CHECK (photo_status IN ('not_required', 'pending', 'verified', 'rejected')) DEFAULT 'not_required',
+      participant_note TEXT NOT NULL DEFAULT '',
+      exception_reason TEXT NOT NULL DEFAULT '',
+      reviewed_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      reviewed_at TIMESTAMPTZ,
+      checked_in_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE (session_id, idempotency_key)
+    );
+
+    CREATE TABLE IF NOT EXISTS attendance_attempts (
+      id SERIAL PRIMARY KEY,
+      session_id INTEGER REFERENCES attendance_sessions(id) ON DELETE CASCADE,
+      outcome TEXT NOT NULL CHECK (outcome IN ('valid', 'pending_verification', 'rejected')),
+      reject_code TEXT NOT NULL DEFAULT '',
+      reject_reason TEXT NOT NULL DEFAULT '',
+      device_fingerprint TEXT NOT NULL DEFAULT '',
+      device_summary TEXT NOT NULL DEFAULT '',
+      distance_meters DOUBLE PRECISION,
+      gps_accuracy DOUBLE PRECISION,
+      gps_status TEXT NOT NULL DEFAULT '',
+      qr_status TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_attendance_records_session ON attendance_records(session_id, checked_in_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_attendance_records_device ON attendance_records(session_id, device_fingerprint);
+    CREATE INDEX IF NOT EXISTS idx_attendance_attempts_session ON attendance_attempts(session_id, created_at DESC);
   `);
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Award, LogIn, Lock, User } from 'lucide-react';
+import { Award, LogIn, Lock, User, QrCode } from 'lucide-react';
 import type { AuthUser } from '../types';
 import { apiFetch } from '../utils/api';
 
@@ -120,6 +120,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
               {loading ? 'Đang xác thực...' : 'Đăng nhập'}
             </button>
           </form>
+
+          <div className="card-surface p-4 flex items-center justify-between gap-3">
+            <div className="text-xs">
+              <div className="font-bold text-[var(--text-primary)]">Đoàn viên tham gia hoạt động?</div>
+              <div className="text-[var(--text-secondary)]">Điểm danh QR động không cần đăng nhập.</div>
+            </div>
+            <a
+              href="/diem-danh"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shrink-0 transition"
+            >
+              <QrCode className="w-4 h-4" /> Điểm danh QR
+            </a>
+          </div>
         </div>
       </div>
     </div>

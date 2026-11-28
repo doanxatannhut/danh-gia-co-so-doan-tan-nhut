@@ -11,6 +11,7 @@ import { adminRouter } from './routes/adminRoutes.js';
 import { scorecardRouter } from './routes/scorecardRoutes.js';
 import { evaluationRouter } from './routes/evaluationRoutes.js';
 import { reportRouter } from './routes/reportRoutes.js';
+import { attendanceRouter } from './routes/attendanceRoutes.js';
 
 export async function createApp() {
   const db = await getDb();
@@ -29,6 +30,7 @@ export async function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api/admin', adminRouter);
   app.use('/api/scorecards', scorecardRouter);
+  app.use('/api', attendanceRouter);
   app.use('/api', evaluationRouter);
   app.use('/api/reports', reportRouter);
 
