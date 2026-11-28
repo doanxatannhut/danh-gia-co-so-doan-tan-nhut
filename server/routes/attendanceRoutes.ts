@@ -454,8 +454,14 @@ attendanceRouter.post('/public/attendance/verify-gps', async (req, res) => {
     }
 
     // Check if this device already checked in for this session
-    const existingRes = await db.query<{ confirmation_code: string; checked_in_at: string; status: string }>(
-      `SELECT confirmation_code, checked_in_at, status FROM attendance_records
+    const existingRes = await db.query<{
+      confirmation_code: string;
+      checked_in_at: string;
+      status: string;
+      participant_name: string;
+      unit_name: string;
+    }>(
+      `SELECT confirmation_code, checked_in_at, status, participant_name, unit_name FROM attendance_records
        WHERE session_id = $1 AND device_fingerprint = $2 AND status IN ('valid', 'pending_verification')
        ORDER BY checked_in_at ASC LIMIT 1`,
       [session.id, deviceFp],
@@ -679,21 +685,22 @@ attendanceRouter.post('/public/attendance/checkin', async (req, res) => {
       }
     }
 
-    // Check existing record on this device in this session
+    // Check existing record on this device in this session (strictly 1 check-in per device per session)
     const existingByDevice = await db.query<{
       id: number;
       confirmation_code: string;
       status: string;
       checked_in_at: string;
+      participant_name: string;
+      unit_name: string;
     }>(
-      `SELECT id, confirmation_code, status, checked_in_at FROM attendance_records
+      `SELECT id, confirmation_code, status, checked_in_at, participant_name, unit_name FROM attendance_records
        WHERE session_id = $1 AND device_fingerprint = $2 AND status IN ('valid', 'pending_verification')
-       ORDER BY checked_in_at ASC`,
+       ORDER BY checked_in_at ASC LIMIT 1`,
       [session.id, deviceFp],
     );
 
-    // If same device already checked in AND not explicitly shared-device exception -> return existing without creating duplicate!
-    if (existingByDevice.rows.length > 0 && !sharedDevice) {
+    if (existingByDevice.rows.length > 0) {
       if (photoStoredName) {
         const p = path.join(PHOTO_DIR, photoStoredName);
         if (fs.existsSync(p)) fs.unlinkSync(p);
@@ -702,7 +709,7 @@ attendanceRouter.post('/public/attendance/checkin', async (req, res) => {
         sessionId: session.id,
         outcome: 'rejected',
         rejectCode: 'DUPLICATE_CHECKIN',
-        rejectReason: 'Thiết bị đã điểm danh trong phiên này (không tạo lượt trùng).',
+        rejectReason: 'Thiết bị này đã điểm danh trong phiên hoạt động này (không cho phép dùng chung thiết bị).',
         deviceFp,
         deviceSummary,
         distance,
@@ -714,30 +721,26 @@ attendanceRouter.post('/public/attendance/checkin', async (req, res) => {
       res.json({
         ok: true,
         alreadyCheckedIn: true,
-        canRequestSharedDevice: true,
-        message: 'Thiết bị này đã ghi nhận điểm danh trong phiên hoạt động này. Không tạo thêm lượt trùng.',
+        message: 'Thiết bị này đã điểm danh trong phiên hoạt động này.',
         record: {
           confirmation_code: existing.confirmation_code,
           status: existing.status,
           checked_in_at: existing.checked_in_at,
           activity_title: session.title,
+          participant_name: existing.participant_name,
+          unit_name: existing.unit_name,
         },
       });
       return;
     }
 
-    // Determine atomic idempotency key:
-    // - Normal check-in: bound directly to device_fingerprint so concurrent requests ALWAYS collapse to 1 atomic row!
-    // - Shared device check-in: uses client-provided idempotency_key (or unique key) and routes to 'pending_verification'
-    const idempotencyKey = sharedDevice
-      ? `shared:${String(req.body?.idempotency_key || crypto.randomBytes(8).toString('hex')).slice(0, 64)}`
-      : `primary:${deviceFp}`;
+    // Atomic idempotency key bound strictly to device_fingerprint so concurrent requests ALWAYS collapse to 1 row
+    const idempotencyKey = `primary:${deviceFp}`;
 
     const recordStatus: 'valid' | 'pending_verification' =
-      sharedDevice || gpsStatus === 'suspicious' ? 'pending_verification' : 'valid';
-    const exceptionReason = sharedDevice
-      ? `Dùng chung thiết bị (lượt thứ ${existingByDevice.rows.length + 1} trên cùng thiết bị) — chuyển cán bộ phụ trách xác minh thủ công`
-      : gpsStatus === 'suspicious'
+      gpsStatus === 'suspicious' ? 'pending_verification' : 'valid';
+    const exceptionReason =
+      gpsStatus === 'suspicious'
         ? 'Tín hiệu GPS có độ chính xác bất thường — cần đối chiếu thủ công'
         : '';
 

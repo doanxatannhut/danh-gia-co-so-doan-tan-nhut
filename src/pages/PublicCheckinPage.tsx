@@ -74,15 +74,15 @@ export const PublicCheckinPage: React.FC = () => {
     confirmation_code: string;
     checked_in_at: string;
     status: string;
+    participant_name?: string;
+    unit_name?: string;
   } | null>(null);
 
-  // Shared device exception mode & required participant info
+  // Required participant info
   const [units, setUnits] = useState<{ id: number; code: string; name: string }[]>([]);
   const [participantName, setParticipantName] = useState('');
   const [selectedUnitId, setSelectedUnitId] = useState('');
   const [infoError, setInfoError] = useState('');
-  const [sharedDeviceMode, setSharedDeviceMode] = useState(false);
-  const [participantNote, setParticipantNote] = useState('');
 
   // Live Camera Photo state (Screen 2 when require_photo = true)
   const [cameraActive, setCameraActive] = useState(false);
@@ -370,7 +370,7 @@ export const PublicCheckinPage: React.FC = () => {
     setCameraActive(false);
   }
 
-  async function submitCheckin(isShared = false) {
+  async function submitCheckin() {
     if (!session || !sessionId) return;
     if (!participantName.trim() || !selectedUnitId) {
       setInfoError('Vui lòng nhập đầy đủ Họ và tên và chọn Chi đoàn / Cơ sở Đoàn.');
@@ -396,11 +396,9 @@ export const PublicCheckinPage: React.FC = () => {
           longitude: gpsCoords?.lon,
           accuracy: gpsCoords?.accuracy,
           client_device_token: clientDeviceToken.current,
-          idempotency_key: isShared ? `${idempotencyKeyRef.current}-shared` : idempotencyKeyRef.current,
-          shared_device: isShared,
+          idempotency_key: idempotencyKeyRef.current,
           participant_name: participantName.trim(),
           unit_id: Number(selectedUnitId),
-          participant_note: participantNote,
           photo_data_url: photoDataUrl || undefined,
         }),
       });
@@ -615,53 +613,49 @@ export const PublicCheckinPage: React.FC = () => {
               )}
             </div>
 
-            {/* Already Checked In on This Device Notice + Shared Device Option */}
-            {gpsState === 'verified' && existingCheckin && !sharedDeviceMode && (
-              <div className="card-surface p-5 space-y-3 border-amber-300 dark:border-amber-700">
-                <div className="flex items-start gap-2.5 text-amber-900 dark:text-amber-200 text-xs">
-                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
-                  <div>
-                    <div className="font-bold">Thiết bị này đã ghi nhận điểm danh trong phiên!</div>
-                    <div className="mt-1">
-                      Mã xác nhận trước đó: <strong className="font-mono">{existingCheckin.confirmation_code}</strong> lúc{' '}
-                      {formatDateTime(existingCheckin.checked_in_at)}.
+            {/* Already Checked In on This Device — strictly show ĐÃ ĐIỂM DANH only */}
+            {gpsState === 'verified' && existingCheckin && (
+              <div className="card-surface p-6 text-center space-y-3 border-emerald-300 dark:border-emerald-700">
+                <div className="w-14 h-14 mx-auto rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-300 flex items-center justify-center">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <div>
+                  <div className="text-base font-extrabold text-emerald-700 dark:text-emerald-300">
+                    ĐÃ ĐIỂM DANH
+                  </div>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">
+                    Thiết bị này đã ghi nhận điểm danh cho hoạt động này. Mỗi thiết bị chỉ được điểm danh 01 lần trong mỗi phiên.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-[var(--bg-subtle)] text-left space-y-1.5 text-xs">
+                  {existingCheckin.participant_name && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-[var(--text-secondary)]">Họ và tên:</span>
+                      <strong>{existingCheckin.participant_name}</strong>
                     </div>
+                  )}
+                  {existingCheckin.unit_name && (
+                    <div className="flex justify-between gap-2">
+                      <span className="text-[var(--text-secondary)]">Chi đoàn:</span>
+                      <strong className="text-right">{existingCheckin.unit_name}</strong>
+                    </div>
+                  )}
+                  <div className="flex justify-between gap-2 items-center">
+                    <span className="text-[var(--text-secondary)]">Mã xác nhận:</span>
+                    <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 font-mono font-bold">
+                      {existingCheckin.confirmation_code}
+                    </span>
+                  </div>
+                  <div className="flex justify-between gap-2">
+                    <span className="text-[var(--text-secondary)]">Thời gian:</span>
+                    <strong>{formatDateTime(existingCheckin.checked_in_at)}</strong>
                   </div>
                 </div>
-                <div className="pt-2 border-t border-[var(--border-subtle)] space-y-2">
-                  <div className="text-[11px] text-[var(--text-secondary)]">
-                    Nếu bạn là <strong>người khác đang mượn chung điện thoại</strong> tại địa điểm tổ chức, hãy chọn nút dưới để gửi lượt điểm danh sang chế độ <strong>cán bộ phụ trách xác minh thủ công</strong>:
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSharedDeviceMode(true)}
-                    className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Users className="w-4 h-4" />
-                    Tôi dùng chung thiết bị — Gửi xác minh thủ công
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Shared Device Note Input */}
-            {gpsState === 'verified' && sharedDeviceMode && (
-              <div className="card-surface p-4 space-y-2 border-amber-300 dark:border-amber-700">
-                <label className="block text-xs font-bold text-amber-800 dark:text-amber-300">
-                  Ghi chú cho cán bộ phụ trách xác minh (Dùng chung thiết bị)
-                </label>
-                <input
-                  type="text"
-                  value={participantNote}
-                  onChange={(e) => setParticipantNote(e.target.value)}
-                  placeholder="Ví dụ: Đoàn viên Ấp 10 mượn điện thoại bạn ngồi kế bên..."
-                  className="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-surface)] text-xs"
-                />
               </div>
             )}
 
             {/* Required Participant Info: Họ tên + Chọn Chi đoàn */}
-            {gpsState === 'verified' && (!existingCheckin || sharedDeviceMode) && (
+            {gpsState === 'verified' && !existingCheckin && (
               <div className="card-surface p-5 space-y-3">
                 <div className="text-xs font-bold uppercase text-[var(--text-secondary)]">
                   Bước 2 · Thông tin đoàn viên tham gia
@@ -716,7 +710,7 @@ export const PublicCheckinPage: React.FC = () => {
             )}
 
             {/* Step B: Live Camera Photo (only when require_photo = true) */}
-            {gpsState === 'verified' && session?.require_photo && (!existingCheckin || sharedDeviceMode) && (
+            {gpsState === 'verified' && session?.require_photo && !existingCheckin && (
               <div className="card-surface p-5 space-y-3">
                 <div className="text-xs font-bold uppercase text-[var(--text-secondary)] flex items-center gap-1.5">
                   <Camera className="w-4 h-4 text-[#005baa]" />
@@ -773,14 +767,14 @@ export const PublicCheckinPage: React.FC = () => {
             )}
 
             {/* Confirm Check-in Button */}
-            {gpsState === 'verified' && (!existingCheckin || sharedDeviceMode) && (
+            {gpsState === 'verified' && !existingCheckin && (
               <button
                 type="button"
                 disabled={!participantName.trim() || !selectedUnitId || Boolean(session?.require_photo && !photoDataUrl)}
-                onClick={() => submitCheckin(sharedDeviceMode)}
+                onClick={() => submitCheckin()}
                 className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm disabled:opacity-50 transition cursor-pointer"
               >
-                {sharedDeviceMode ? 'GỬI XÁC MINH ĐIỂM DANH' : 'HOÀN TẤT ĐIỂM DANH'}
+                HOÀN TẤT ĐIỂM DANH
               </button>
             )}
           </div>

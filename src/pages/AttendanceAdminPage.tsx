@@ -634,7 +634,7 @@ export const AttendanceAdminPage: React.FC = () => {
               <div className="p-3.5 rounded-xl bg-sky-50/80 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800 text-xs text-sky-900 dark:text-sky-200 flex items-start gap-2">
                 <Info className="w-4 h-4 shrink-0 mt-0.5 text-sky-600" />
                 <span>
-                  <strong>Cơ chế minh bạch & bảo mật:</strong> Vì hệ thống không yêu cầu đăng nhập hay mã đoàn viên, mã thiết bị và ảnh chụp tại chỗ chỉ mang tính hỗ trợ đối chiếu sự hiện diện (không kết luận gian lận tự động). Các trường hợp dùng chung điện thoại được chuyển sang mục <strong>Chờ xác minh</strong> để cán bộ phụ trách duyệt thủ công.
+                  <strong>Quy tắc kiểm soát thiết bị:</strong> Mỗi thiết bị chỉ được điểm danh <strong>01 lần duy nhất</strong> trong mỗi phiên hoạt động (không cho phép dùng chung thiết bị để điểm danh nhiều lần). Khi thiết bị quét lại sẽ chỉ hiển thị thông báo <strong>Đã điểm danh</strong>.
                 </span>
               </div>
             </div>

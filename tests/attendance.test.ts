@@ -180,7 +180,7 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
   assert.equal(duplicateRes.status, 200);
   assert.equal(duplicateRes.json().alreadyCheckedIn, true);
 
-  // 11. Shared device by a second genuine person -> routed to pending_verification (not auto-blocked!)
+  // 11. Second attempt on same device (even with shared_device: true) -> strictly blocked from creating new record, returns alreadyCheckedIn
   const sharedRes = await request('POST', '/api/public/attendance/checkin', {
     cookie: devAlphaCookie,
     body: {
@@ -193,11 +193,10 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
       unit_id: sampleUnitId,
       client_device_token: 'device-alpha',
       shared_device: true,
-      participant_note: 'Mượn điện thoại bạn ngồi kế bên',
     },
   });
-  assert.equal(sharedRes.status, 201);
-  assert.equal(sharedRes.json().record.status, 'pending_verification');
+  assert.equal(sharedRes.status, 200);
+  assert.equal(sharedRes.json().alreadyCheckedIn, true);
 
   // 3. Wrong-session QR (qr2 used on s1) -> rejected
   const wrongSessionRes = await request('POST', '/api/public/attendance/checkin', {
@@ -296,11 +295,11 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
   assert.equal(expiredQrRes.status, 400);
   assert.equal(expiredQrRes.json().code, 'QR_EXPIRED');
 
-  // Verify dashboard stats: exactly 2 valid (alpha + concurrent) + 1 pending_verification (shared) = 3 records total
+  // Verify dashboard stats: exactly 2 valid (alpha + concurrent), 0 pending -> 2 records total
   const dash = (await request('GET', `/api/attendance/sessions/${s1Id}/dashboard`, { cookie: adminCookie })).json();
   assert.equal(dash.stats.validCount, 2);
-  assert.equal(dash.stats.pendingCount, 1);
-  assert.equal(dash.records.length, 3);
+  assert.equal(dash.stats.pendingCount, 0);
+  assert.equal(dash.records.length, 2);
   assert.ok(dash.stats.rejectedCount >= 4);
 
   // Excel export works
