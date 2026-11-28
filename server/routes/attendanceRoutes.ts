@@ -296,6 +296,20 @@ async function logAttempt(params: {
 // PUBLIC ENDPOINTS (NO LOGIN, NO MÃ ĐOÀN VIÊN REQUIRED)
 // ============================================================================
 
+// Public list of active Cơ sở Đoàn for mobile check-in dropdown
+attendanceRouter.get('/public/attendance/units', async (_req, res) => {
+  try {
+    const db = await getDb();
+    const result = await db.query(
+      `SELECT id, code, name, unit_type FROM units WHERE active = TRUE ORDER BY code ASC, id ASC`,
+    );
+    res.json({ units: result.rows });
+  } catch (err) {
+    console.error('Public attendance units error:', err);
+    res.status(500).json({ error: 'Không thể tải danh sách Chi đoàn.' });
+  }
+});
+
 // Screen 1: List active sessions
 attendanceRouter.get('/public/attendance/active', async (_req, res) => {
   try {
@@ -503,6 +517,8 @@ attendanceRouter.post('/public/attendance/checkin', async (req, res) => {
     const verifyTicket = String(req.body?.verify_ticket ?? '');
     const clientDeviceToken = String(req.body?.client_device_token ?? '');
     const sharedDevice = Boolean(req.body?.shared_device ?? false);
+    const participantName = String(req.body?.participant_name ?? '').trim().slice(0, 120);
+    const unitIdRaw = req.body?.unit_id ? Number(req.body.unit_id) : null;
     const participantNote = String(req.body?.participant_note ?? '').trim().slice(0, 200);
     const photoBase64 = typeof req.body?.photo_data_url === 'string' ? req.body.photo_data_url : '';
     const deviceSummary = summarizeUserAgent(req.headers['user-agent'] || '');
@@ -532,6 +548,27 @@ attendanceRouter.post('/public/attendance/checkin', async (req, res) => {
         deviceSummary,
       });
       res.status(409).json({ error: msg, code: session.status === 'closed' ? 'SESSION_CLOSED' : 'SESSION_NOT_ACTIVE' });
+      return;
+    }
+
+    if (!participantName || !unitIdRaw || Number.isNaN(unitIdRaw)) {
+      res.status(400).json({
+        error: 'Vui lòng nhập đầy đủ Họ và tên và chọn Chi đoàn / Cơ sở Đoàn trước khi điểm danh.',
+        code: 'PARTICIPANT_INFO_REQUIRED',
+      });
+      return;
+    }
+
+    const unitRes = await db.query<{ id: number; name: string }>(
+      'SELECT id, name FROM units WHERE id = $1 AND active = TRUE',
+      [unitIdRaw],
+    );
+    const unitRow = unitRes.rows[0];
+    if (!unitRow) {
+      res.status(400).json({
+        error: 'Chi đoàn / Cơ sở Đoàn được chọn không hợp lệ.',
+        code: 'INVALID_UNIT',
+      });
       return;
     }
 
@@ -716,8 +753,8 @@ attendanceRouter.post('/public/attendance/checkin', async (req, res) => {
       `INSERT INTO attendance_records
         (session_id, confirmation_code, idempotency_key, status, qr_token_hash, device_fingerprint, device_summary,
          latitude, longitude, gps_accuracy, distance_meters, gps_status, qr_status, photo_stored_name, photo_status,
-         participant_note, exception_reason)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'valid', $13, $14, $15, $16)
+         participant_name, unit_id, unit_name, participant_note, exception_reason)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'valid', $13, $14, $15, $16, $17, $18, $19)
        ON CONFLICT (session_id, idempotency_key) DO NOTHING
        RETURNING id, confirmation_code, status, checked_in_at`,
       [
@@ -735,6 +772,9 @@ attendanceRouter.post('/public/attendance/checkin', async (req, res) => {
         gpsStatus,
         photoStoredName,
         photoStatus,
+        participantName,
+        unitRow.id,
+        unitRow.name,
         participantNote,
         exceptionReason,
       ],
@@ -790,6 +830,8 @@ attendanceRouter.post('/public/attendance/checkin', async (req, res) => {
         status: created.status,
         checked_in_at: created.checked_in_at,
         activity_title: session.title,
+        participant_name: participantName,
+        unit_name: unitRow.name,
         distance_meters: distance,
       },
     });
@@ -1220,6 +1262,8 @@ attendanceRouter.get('/attendance/sessions/:id/export/excel', requireAuth, requi
 
     const recordsRes = await db.query<{
       confirmation_code: string;
+      participant_name: string;
+      unit_name: string;
       status: string;
       checked_in_at: string;
       distance_meters: number | null;
@@ -1230,7 +1274,7 @@ attendanceRouter.get('/attendance/sessions/:id/export/excel', requireAuth, requi
       participant_note: string;
       exception_reason: string;
     }>(
-      `SELECT confirmation_code, status, checked_in_at, distance_meters, gps_status, qr_status,
+      `SELECT confirmation_code, participant_name, unit_name, status, checked_in_at, distance_meters, gps_status, qr_status,
               device_summary, photo_status, participant_note, exception_reason
        FROM attendance_records
        WHERE session_id = $1
@@ -1242,17 +1286,17 @@ attendanceRouter.get('/attendance/sessions/:id/export/excel', requireAuth, requi
     wb.creator = 'Dashboard Tuổi trẻ Tân Nhựt';
     const ws = wb.addWorksheet('Điểm danh QR động');
 
-    ws.mergeCells('A1:J1');
+    ws.mergeCells('A1:L1');
     ws.getCell('A1').value = 'ĐOÀN TNCS HỒ CHÍ MINH XÃ TÂN NHỰT – DASHBOARD TUỔI TRẺ TÂN NHỰT';
     ws.getCell('A1').font = { bold: true, size: 13, color: { argb: 'FF005BAA' } };
     ws.getCell('A1').alignment = { horizontal: 'center' };
 
-    ws.mergeCells('A2:J2');
+    ws.mergeCells('A2:L2');
     ws.getCell('A2').value = `BÁO CÁO ĐIỂM DANH HOẠT ĐỘNG: ${session.title.toUpperCase()}`;
     ws.getCell('A2').font = { bold: true, size: 12 };
     ws.getCell('A2').alignment = { horizontal: 'center' };
 
-    ws.mergeCells('A3:J3');
+    ws.mergeCells('A3:L3');
     ws.getCell('A3').value = `Ngày ${session.event_date} (${session.start_time} – ${session.end_time}) | Địa điểm: ${session.location_name} | Bán kính GPS: ${session.radius_meters}m`;
     ws.getCell('A3').font = { italic: true, size: 10, color: { argb: 'FF475569' } };
     ws.getCell('A3').alignment = { horizontal: 'center' };
@@ -1262,6 +1306,8 @@ attendanceRouter.get('/attendance/sessions/:id/export/excel', requireAuth, requi
     const header = ws.addRow([
       'STT',
       'Mã xác nhận',
+      'Họ và tên',
+      'Chi đoàn / Cơ sở Đoàn',
       'Thời gian điểm danh',
       'Trạng thái lượt',
       'Trạng thái GPS',
@@ -1294,6 +1340,8 @@ attendanceRouter.get('/attendance/sessions/:id/export/excel', requireAuth, requi
       ws.addRow([
         idx + 1,
         r.confirmation_code,
+        r.participant_name || '—',
+        r.unit_name || '—',
         new Date(r.checked_in_at).toLocaleString('vi-VN'),
         statusVi[r.status] ?? r.status,
         r.gps_status === 'valid' ? 'Hợp lệ' : r.gps_status,
@@ -1307,7 +1355,9 @@ attendanceRouter.get('/attendance/sessions/:id/export/excel', requireAuth, requi
 
     ws.columns = [
       { width: 6 },
-      { width: 16 },
+      { width: 15 },
+      { width: 24 },
+      { width: 32 },
       { width: 22 },
       { width: 16 },
       { width: 15 },

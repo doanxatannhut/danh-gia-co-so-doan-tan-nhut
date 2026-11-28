@@ -76,7 +76,11 @@ export const PublicCheckinPage: React.FC = () => {
     status: string;
   } | null>(null);
 
-  // Shared device exception mode
+  // Shared device exception mode & required participant info
+  const [units, setUnits] = useState<{ id: number; code: string; name: string }[]>([]);
+  const [participantName, setParticipantName] = useState('');
+  const [selectedUnitId, setSelectedUnitId] = useState('');
+  const [infoError, setInfoError] = useState('');
   const [sharedDeviceMode, setSharedDeviceMode] = useState(false);
   const [participantNote, setParticipantNote] = useState('');
 
@@ -95,6 +99,8 @@ export const PublicCheckinPage: React.FC = () => {
     title: string;
     message: string;
     activityTitle?: string;
+    participantName?: string;
+    unitName?: string;
     confirmationCode?: string;
     checkedInAt?: string;
     distanceMeters?: number | null;
@@ -112,6 +118,14 @@ export const PublicCheckinPage: React.FC = () => {
       qrStreamRef.current?.getTracks().forEach((t) => t.stop());
       photoStreamRef.current?.getTracks().forEach((t) => t.stop());
     };
+  }, []);
+
+  // Load official Chi đoàn list for dropdown
+  useEffect(() => {
+    fetch('/api/public/attendance/units')
+      .then((r) => r.json())
+      .then((d) => setUnits(d.units || []))
+      .catch(() => {});
   }, []);
 
   // Load active sessions for Screen 1
@@ -358,6 +372,11 @@ export const PublicCheckinPage: React.FC = () => {
 
   async function submitCheckin(isShared = false) {
     if (!session || !sessionId) return;
+    if (!participantName.trim() || !selectedUnitId) {
+      setInfoError('Vui lòng nhập đầy đủ Họ và tên và chọn Chi đoàn / Cơ sở Đoàn.');
+      return;
+    }
+    setInfoError('');
     if (session.require_photo && !photoDataUrl) {
       setCameraError('Vui lòng chụp ảnh trực tiếp tại chỗ trước khi xác nhận điểm danh.');
       return;
@@ -379,6 +398,8 @@ export const PublicCheckinPage: React.FC = () => {
           client_device_token: clientDeviceToken.current,
           idempotency_key: isShared ? `${idempotencyKeyRef.current}-shared` : idempotencyKeyRef.current,
           shared_device: isShared,
+          participant_name: participantName.trim(),
+          unit_id: Number(selectedUnitId),
           participant_note: participantNote,
           photo_data_url: photoDataUrl || undefined,
         }),
@@ -408,6 +429,8 @@ export const PublicCheckinPage: React.FC = () => {
             : 'ĐIỂM DANH THÀNH CÔNG',
         message: data.message,
         activityTitle: data.record?.activity_title || session.title,
+        participantName: data.record?.participant_name || participantName.trim(),
+        unitName: data.record?.unit_name || units.find((u) => String(u.id) === selectedUnitId)?.name,
         confirmationCode: data.record?.confirmation_code,
         checkedInAt: data.record?.checked_in_at,
         distanceMeters: data.record?.distance_meters ?? distanceMeters,
@@ -637,6 +660,61 @@ export const PublicCheckinPage: React.FC = () => {
               </div>
             )}
 
+            {/* Required Participant Info: Họ tên + Chọn Chi đoàn */}
+            {gpsState === 'verified' && (!existingCheckin || sharedDeviceMode) && (
+              <div className="card-surface p-5 space-y-3">
+                <div className="text-xs font-bold uppercase text-[var(--text-secondary)]">
+                  Bước 2 · Thông tin đoàn viên tham gia
+                </div>
+                {infoError && (
+                  <div className="p-2.5 rounded-lg bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 text-xs">
+                    {infoError}
+                  </div>
+                )}
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <label htmlFor="participant-name" className="block text-xs font-semibold mb-1">
+                      Họ và tên *
+                    </label>
+                    <input
+                      id="participant-name"
+                      type="text"
+                      required
+                      value={participantName}
+                      onChange={(e) => {
+                        setParticipantName(e.target.value);
+                        if (infoError) setInfoError('');
+                      }}
+                      placeholder="Nhập đầy đủ họ và tên của bạn"
+                      className="w-full px-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="participant-unit" className="block text-xs font-semibold mb-1">
+                      Chi đoàn / Cơ sở Đoàn *
+                    </label>
+                    <select
+                      id="participant-unit"
+                      required
+                      value={selectedUnitId}
+                      onChange={(e) => {
+                        setSelectedUnitId(e.target.value);
+                        if (infoError) setInfoError('');
+                      }}
+                      className="w-full px-3 py-2.5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-surface)] text-sm"
+                    >
+                      <option value="">-- Chọn Chi đoàn / Cơ sở Đoàn --</option>
+                      {units.map((u) => (
+                        <option key={u.id} value={String(u.id)}>
+                          {u.name} ({u.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Step B: Live Camera Photo (only when require_photo = true) */}
             {gpsState === 'verified' && session?.require_photo && (!existingCheckin || sharedDeviceMode) && (
               <div className="card-surface p-5 space-y-3">
@@ -698,7 +776,7 @@ export const PublicCheckinPage: React.FC = () => {
             {gpsState === 'verified' && (!existingCheckin || sharedDeviceMode) && (
               <button
                 type="button"
-                disabled={Boolean(session?.require_photo && !photoDataUrl)}
+                disabled={!participantName.trim() || !selectedUnitId || Boolean(session?.require_photo && !photoDataUrl)}
                 onClick={() => submitCheckin(sharedDeviceMode)}
                 className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-sm disabled:opacity-50 transition cursor-pointer"
               >
@@ -759,6 +837,18 @@ export const PublicCheckinPage: React.FC = () => {
                   <div className="flex justify-between gap-2">
                     <span className="text-[var(--text-secondary)]">Hoạt động:</span>
                     <strong className="text-right">{result.activityTitle}</strong>
+                  </div>
+                )}
+                {result.participantName && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-[var(--text-secondary)]">Họ và tên:</span>
+                    <strong className="text-right">{result.participantName}</strong>
+                  </div>
+                )}
+                {result.unitName && (
+                  <div className="flex justify-between gap-2">
+                    <span className="text-[var(--text-secondary)]">Chi đoàn:</span>
+                    <strong className="text-right">{result.unitName}</strong>
                   </div>
                 )}
                 {result.confirmationCode && (

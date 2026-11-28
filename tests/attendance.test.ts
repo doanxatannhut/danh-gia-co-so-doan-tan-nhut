@@ -126,7 +126,26 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
   const qr2 = (await request('GET', `/api/attendance/sessions/${s2Id}/qr`, { cookie: adminCookie })).json();
   assert.ok(qr1.token && qr1.qrDataUrl.startsWith('data:image/png;base64,'));
 
-  // 1. Valid QR + Valid GPS inside 80m -> Check-in succeeds (NO login required!)
+  // Fetch official units list for public dropdown
+  const unitsJson = (await request('GET', '/api/public/attendance/units')).json();
+  assert.equal(unitsJson.units.length, 55);
+  const sampleUnitId = unitsJson.units[0].id;
+
+  // Missing name or unit must be rejected (400)
+  const missingInfo = await request('POST', '/api/public/attendance/checkin', {
+    body: {
+      session_id: s1Id,
+      token: qr1.token,
+      latitude: 10.7156,
+      longitude: 106.5642,
+      accuracy: 12,
+      client_device_token: 'device-missing-info',
+    },
+  });
+  assert.equal(missingInfo.status, 400);
+  assert.equal(missingInfo.json().code, 'PARTICIPANT_INFO_REQUIRED');
+
+  // 1. Valid QR + Valid GPS inside 80m + Name & Chi đoàn -> Check-in succeeds (NO login required!)
   const validCheckin = await request('POST', '/api/public/attendance/checkin', {
     body: {
       session_id: s1Id,
@@ -134,11 +153,14 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
       latitude: 10.7156, // ~11m away
       longitude: 106.5642,
       accuracy: 12,
+      participant_name: 'Nguyễn Văn A',
+      unit_id: sampleUnitId,
       client_device_token: 'device-alpha',
     },
   });
   assert.equal(validCheckin.status, 201);
   assert.equal(validCheckin.json().message, 'ĐIỂM DANH THÀNH CÔNG');
+  assert.equal(validCheckin.json().record.participant_name, 'Nguyễn Văn A');
   const devAlphaCookie = validCheckin.headers['set-cookie']![0].split(';')[0];
 
   // 6 & 7. Re-scanning QR / reloading page with same device -> does NOT create a duplicate record
@@ -150,6 +172,8 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
       latitude: 10.7156,
       longitude: 106.5642,
       accuracy: 12,
+      participant_name: 'Nguyễn Văn A',
+      unit_id: sampleUnitId,
       client_device_token: 'device-alpha',
     },
   });
@@ -165,6 +189,8 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
       latitude: 10.7156,
       longitude: 106.5642,
       accuracy: 12,
+      participant_name: 'Trần Thị B',
+      unit_id: sampleUnitId,
       client_device_token: 'device-alpha',
       shared_device: true,
       participant_note: 'Mượn điện thoại bạn ngồi kế bên',
@@ -181,6 +207,8 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
       latitude: 10.7156,
       longitude: 106.5642,
       accuracy: 10,
+      participant_name: 'Lê Văn C',
+      unit_id: sampleUnitId,
       client_device_token: 'device-beta',
     },
   });
@@ -195,6 +223,8 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
       latitude: 10.7350, // >2km away
       longitude: 106.5642,
       accuracy: 15,
+      participant_name: 'Phạm Văn D',
+      unit_id: sampleUnitId,
       client_device_token: 'device-far',
     },
   });
@@ -207,6 +237,8 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
     body: {
       session_id: s1Id,
       token: qr1.token,
+      participant_name: 'Võ Thị E',
+      unit_id: sampleUnitId,
       client_device_token: 'device-nogps',
     },
   });
@@ -239,6 +271,8 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
           latitude: 10.7155,
           longitude: 106.5643,
           accuracy: 10,
+          participant_name: 'Hoàng Văn F',
+          unit_id: sampleUnitId,
           client_device_token: 'device-concurrent',
         },
       }),
@@ -254,6 +288,8 @@ test('Dynamic QR Attendance: all 12 acceptance criteria (valid, expired, wrong s
       latitude: 10.7155,
       longitude: 106.5642,
       accuracy: 10,
+      participant_name: 'Đặng Văn G',
+      unit_id: sampleUnitId,
       client_device_token: 'device-expired',
     },
   });

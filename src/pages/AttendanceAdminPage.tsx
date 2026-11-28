@@ -51,6 +51,9 @@ interface AttendanceRecord {
   id: number;
   session_id: number;
   confirmation_code: string;
+  participant_name: string;
+  unit_id: number | null;
+  unit_name: string;
   status: 'valid' | 'pending_verification' | 'rejected';
   device_summary: string;
   distance_meters: number | null;
@@ -397,6 +400,8 @@ export const AttendanceAdminPage: React.FC = () => {
       const q = search.trim().toLowerCase();
       return (
         r.confirmation_code.toLowerCase().includes(q) ||
+        (r.participant_name || '').toLowerCase().includes(q) ||
+        (r.unit_name || '').toLowerCase().includes(q) ||
         r.device_summary.toLowerCase().includes(q) ||
         r.participant_note.toLowerCase().includes(q) ||
         r.exception_reason.toLowerCase().includes(q)
@@ -746,6 +751,7 @@ export const AttendanceAdminPage: React.FC = () => {
                   <thead>
                     <tr className="bg-[var(--bg-subtle)] text-[var(--text-secondary)] text-xs uppercase">
                       <th className="py-3 px-4">Thời gian & Mã</th>
+                      <th className="py-3 px-3">Đoàn viên & Chi đoàn</th>
                       <th className="py-3 px-3">Trạng thái</th>
                       <th className="py-3 px-3">GPS</th>
                       <th className="py-3 px-3">QR</th>
@@ -758,7 +764,7 @@ export const AttendanceAdminPage: React.FC = () => {
                   <tbody className="divide-y divide-[var(--border-subtle)]">
                     {filteredRecords.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-sm text-[var(--text-secondary)]">
+                        <td colSpan={9} className="py-8 text-center text-sm text-[var(--text-secondary)]">
                           Chưa có lượt điểm danh nào.
                         </td>
                       </tr>
@@ -772,6 +778,10 @@ export const AttendanceAdminPage: React.FC = () => {
                             <div className="text-[11px] text-[var(--text-secondary)]">
                               {formatDateTime(r.checked_in_at)}
                             </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="font-semibold text-xs">{r.participant_name || '—'}</div>
+                            <div className="text-[11px] text-[var(--text-secondary)]">{r.unit_name || '—'}</div>
                           </td>
                           <td className="py-3 px-3">
                             {r.status === 'valid' && (

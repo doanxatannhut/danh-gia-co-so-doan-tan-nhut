@@ -228,5 +228,9 @@ export async function initSchema(db: DbClient): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_attendance_records_session ON attendance_records(session_id, checked_in_at DESC);
     CREATE INDEX IF NOT EXISTS idx_attendance_records_device ON attendance_records(session_id, device_fingerprint);
     CREATE INDEX IF NOT EXISTS idx_attendance_attempts_session ON attendance_attempts(session_id, created_at DESC);
+
+    ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS participant_name TEXT NOT NULL DEFAULT '';
+    ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS unit_id INTEGER REFERENCES units(id) ON DELETE SET NULL;
+    ALTER TABLE attendance_records ADD COLUMN IF NOT EXISTS unit_name TEXT NOT NULL DEFAULT '';
   `);
 }
