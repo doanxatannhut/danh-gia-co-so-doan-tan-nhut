@@ -65,6 +65,10 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
 
   const [showItemModal, setShowItemModal] = useState(false);
   const [editingItem, setEditingItem] = useState<CriteriaItem | null>(null);
+  const [forceDeleteTarget, setForceDeleteTarget] = useState<ScorecardVersion | null>(null);
+  const [forceDeletePassword, setForceDeletePassword] = useState('');
+  const [forceDeleteError, setForceDeleteError] = useState('');
+  const [forceDeleting, setForceDeleting] = useState(false);
   const [itemForm, setItemForm] = useState({
     group_id: 0,
     code: '',
@@ -97,13 +101,16 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
 
   async function handleDeleteVersion(v: ScorecardVersion) {
     const hasActive = (v.activeEvaluations ?? 0) > 0;
-    const msg = hasActive
-      ? `CẢNH BÁO: Phiên bản "${v.title}" (${v.code}) đang có ${v.activeEvaluations} hồ sơ đã/đang chấm điểm. Bạn có chắc muốn XÓA VĨNH VIỄN phiên bản này cùng toàn bộ hồ sơ đánh giá liên quan?`
-      : `Xóa vĩnh viễn phiên bản bảng điểm "${v.title}" (${v.code})?`;
-    if (!window.confirm(msg)) return;
+    if (hasActive) {
+      setForceDeleteTarget(v);
+      setForceDeletePassword('');
+      setForceDeleteError('');
+      return;
+    }
+    if (!window.confirm(`Xóa vĩnh viễn phiên bản bảng điểm "${v.title}" (${v.code})?`)) return;
     setError('');
     try {
-      await apiFetch(`/api/scorecards/${v.id}${hasActive ? '?force=1' : ''}`, { method: 'DELETE' });
+      await apiFetch(`/api/scorecards/${v.id}`, { method: 'DELETE' });
       onVersionsChanged();
       if (selectedVersionId === v.id) {
         const remaining = versions.filter((item) => item.id !== v.id);
@@ -113,6 +120,33 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
       showToastMsg(`Đã xóa phiên bản bảng điểm ${v.code}.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể xóa phiên bản bảng điểm.');
+    }
+  }
+
+  async function handleConfirmForceDelete(e: React.FormEvent) {
+    e.preventDefault();
+    if (!forceDeleteTarget) return;
+    setForceDeleteError('');
+    setForceDeleting(true);
+    try {
+      await apiFetch(`/api/scorecards/${forceDeleteTarget.id}?force=1`, {
+        method: 'DELETE',
+        body: JSON.stringify({ confirm_password: forceDeletePassword }),
+      });
+      const deleted = forceDeleteTarget;
+      setForceDeleteTarget(null);
+      setForceDeletePassword('');
+      onVersionsChanged();
+      if (selectedVersionId === deleted.id) {
+        const remaining = versions.filter((item) => item.id !== deleted.id);
+        if (remaining[0]) onSelectVersion(remaining[0].id);
+        else setDetail(null);
+      }
+      showToastMsg(`Đã xóa bắt buộc phiên bản bảng điểm ${deleted.code}.`);
+    } catch (err) {
+      setForceDeleteError(err instanceof Error ? err.message : 'Xóa bắt buộc thất bại.');
+    } finally {
+      setForceDeleting(false);
     }
   }
 
@@ -973,6 +1007,67 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
               <button type="button" onClick={() => setShowItemModal(false)} className="px-4 py-2 rounded-lg border border-[var(--border-color)] text-sm cursor-pointer">Hủy</button>
               <button type="submit" className="px-4 py-2 rounded-lg bg-[#005baa] text-white text-sm font-semibold cursor-pointer">
                 {editingItem ? 'Lưu thay đổi' : 'Thêm tiêu chí'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Modal: Force Delete Scorecard with Admin Password Confirmation */}
+      {forceDeleteTarget && (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+          <form onSubmit={handleConfirmForceDelete} className="card-surface max-w-md w-full p-6 space-y-4 border-red-300 dark:border-red-800">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 flex items-center justify-center shrink-0">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-red-700 dark:text-red-400">
+                  Xác nhận xóa bắt buộc bảng điểm
+                </h3>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                  Phiên bản <strong>{forceDeleteTarget.title}</strong> ({forceDeleteTarget.code}) đang có{' '}
+                  <strong>{forceDeleteTarget.activeEvaluations} hồ sơ</strong> đã/đang chấm điểm. Xóa bắt buộc sẽ xóa vĩnh viễn toàn bộ dữ liệu chấm điểm liên quan và không thể hoàn tác.
+                </p>
+              </div>
+            </div>
+
+            {forceDeleteError && (
+              <div role="alert" className="p-2.5 rounded-lg bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs">
+                {forceDeleteError}
+              </div>
+            )}
+
+            <div className="text-sm">
+              <label htmlFor="force-delete-password" className="block text-xs font-semibold mb-1.5">
+                Nhập mật khẩu đăng nhập Quản trị viên Đoàn xã để xác nhận *
+              </label>
+              <input
+                id="force-delete-password"
+                type="password"
+                required
+                autoFocus
+                value={forceDeletePassword}
+                onChange={(e) => setForceDeletePassword(e.target.value)}
+                placeholder="Nhập mật khẩu tài khoản Admin"
+                className="w-full px-3 py-2.5 rounded-lg border border-red-300 dark:border-red-700 bg-[var(--bg-surface)] text-sm"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setForceDeleteTarget(null)}
+                className="px-4 py-2 rounded-lg border border-[var(--border-color)] text-sm cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={forceDeleting || !forceDeletePassword}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold disabled:opacity-50 cursor-pointer"
+              >
+                {forceDeleting ? 'Đang xác thực...' : 'Xác nhận xóa vĩnh viễn'}
               </button>
             </div>
           </form>

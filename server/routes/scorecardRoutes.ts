@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { getDb } from '../db/client.js';
-import { requireAuth, requireRoles, writeAuditLog } from '../auth.js';
+import { requireAuth, requireRoles, verifyPassword, writeAuditLog } from '../auth.js';
 import { getVersionPointSummary, recalculateEvaluationTotals } from '../scoring.js';
 
 export const scorecardRouter = Router();
@@ -178,23 +178,40 @@ scorecardRouter.delete('/:id', requireAuth, requireRoles('admin', 'reviewer'), a
     }
 
     const activeCount = await getActiveEvalCount(versionId);
-    const forceDelete = req.query.force === '1' && req.user!.role === 'admin';
-    if (activeCount > 0 && !forceDelete) {
-      res.status(409).json({
-        error: `Phiên bản đang có ${activeCount} hồ sơ đã/đang chấm điểm. Chỉ Quản trị viên mới có thể xác nhận xóa bắt buộc.`,
-        canForceDelete: req.user!.role === 'admin',
-      });
-      return;
+    const forceDelete = req.query.force === '1';
+    if (activeCount > 0) {
+      if (req.user!.role !== 'admin' || !forceDelete) {
+        res.status(409).json({
+          error: `Phiên bản đang có ${activeCount} hồ sơ đã/đang chấm điểm. Chỉ Quản trị viên Đoàn xã xác nhận bằng mật khẩu đăng nhập mới được xóa bắt buộc.`,
+          requiresAdminPassword: req.user!.role === 'admin',
+        });
+        return;
+      }
+
+      const confirmPassword = String(req.body?.confirm_password ?? '');
+      if (!confirmPassword) {
+        res.status(400).json({ error: 'Vui lòng nhập mật khẩu đăng nhập Quản trị viên để xác nhận xóa bắt buộc.' });
+        return;
+      }
+      const userRes = await db.query<{ password_hash: string }>(
+        'SELECT password_hash FROM users WHERE id = $1',
+        [req.user!.id],
+      );
+      const storedHash = userRes.rows[0]?.password_hash;
+      if (!storedHash || !verifyPassword(confirmPassword, storedHash)) {
+        res.status(403).json({ error: 'Mật khẩu xác nhận không chính xác. Thao tác xóa bắt buộc đã bị hủy.' });
+        return;
+      }
     }
 
     await db.query('DELETE FROM scorecard_versions WHERE id = $1', [versionId]);
 
     await writeAuditLog({
       user: req.user!,
-      action: 'DELETE_SCORECARD',
+      action: activeCount > 0 ? 'FORCE_DELETE_SCORECARD' : 'DELETE_SCORECARD',
       entityType: 'scorecard_version',
       entityId: versionId,
-      summary: `Xóa phiên bản bảng điểm ${existing.rows[0].code}: ${existing.rows[0].title}`,
+      summary: `${activeCount > 0 ? `Xóa bắt buộc (có ${activeCount} hồ sơ)` : 'Xóa'} phiên bản bảng điểm ${existing.rows[0].code}: ${existing.rows[0].title}`,
     });
 
     res.json({ ok: true });
