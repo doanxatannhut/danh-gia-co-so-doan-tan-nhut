@@ -71,7 +71,7 @@ export async function seedIfEmpty(db: DbClient): Promise<void> {
   // 1. Clean up any previously seeded mock data & sample scorecards
   await db.query(`DELETE FROM units WHERE code = ANY($1::text[])`, [MOCK_UNIT_CODES]);
   await db.query(`DELETE FROM users WHERE username = ANY($1::text[])`, [MOCK_USERNAMES]);
-  await db.query(`DELETE FROM scorecard_versions WHERE code IN ('BD-2025-V1', 'BD-2026-V1')`);
+  await db.query(`DELETE FROM scorecard_versions WHERE code IN ('BD-2025-V1', 'BD-2026-V1', 'BD-2026-V1-313') OR title = 'Mô phỏng Bảng điểm 2026'`);
   await db.query(`DELETE FROM audit_logs WHERE entity_id IN ('CD-AP1', 'CD-AP3') OR actor_name = 'Trần Thị Bích Thảo'`);
 
   // 2. Ensure default Admin account exists (ONLY account created by default)

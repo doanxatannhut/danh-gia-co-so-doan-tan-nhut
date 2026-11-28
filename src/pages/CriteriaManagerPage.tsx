@@ -96,10 +96,14 @@ export const CriteriaManagerPage: React.FC<CriteriaManagerPageProps> = ({
   }, [selectedVersionId]);
 
   async function handleDeleteVersion(v: ScorecardVersion) {
-    if (!window.confirm(`Xóa vĩnh viễn phiên bản bảng điểm "${v.title}" (${v.code})?`)) return;
+    const hasActive = (v.activeEvaluations ?? 0) > 0;
+    const msg = hasActive
+      ? `CẢNH BÁO: Phiên bản "${v.title}" (${v.code}) đang có ${v.activeEvaluations} hồ sơ đã/đang chấm điểm. Bạn có chắc muốn XÓA VĨNH VIỄN phiên bản này cùng toàn bộ hồ sơ đánh giá liên quan?`
+      : `Xóa vĩnh viễn phiên bản bảng điểm "${v.title}" (${v.code})?`;
+    if (!window.confirm(msg)) return;
     setError('');
     try {
-      await apiFetch(`/api/scorecards/${v.id}`, { method: 'DELETE' });
+      await apiFetch(`/api/scorecards/${v.id}${hasActive ? '?force=1' : ''}`, { method: 'DELETE' });
       onVersionsChanged();
       if (selectedVersionId === v.id) {
         const remaining = versions.filter((item) => item.id !== v.id);

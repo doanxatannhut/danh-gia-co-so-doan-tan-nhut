@@ -178,9 +178,11 @@ scorecardRouter.delete('/:id', requireAuth, requireRoles('admin', 'reviewer'), a
     }
 
     const activeCount = await getActiveEvalCount(versionId);
-    if (activeCount > 0) {
+    const forceDelete = req.query.force === '1' && req.user!.role === 'admin';
+    if (activeCount > 0 && !forceDelete) {
       res.status(409).json({
-        error: `Không thể xóa phiên bản đang có ${activeCount} hồ sơ đã/đang chấm điểm. Hãy chuyển sang "Ngừng áp dụng" thay vì xóa.`,
+        error: `Phiên bản đang có ${activeCount} hồ sơ đã/đang chấm điểm. Chỉ Quản trị viên mới có thể xác nhận xóa bắt buộc.`,
+        canForceDelete: req.user!.role === 'admin',
       });
       return;
     }
